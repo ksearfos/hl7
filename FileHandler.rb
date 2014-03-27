@@ -35,7 +35,7 @@
 #
 # CREATED BY: Kelli Searfos
 #
-# LAST UPDATED: 3/13/14 16:00
+# LAST UPDATED: 3/27/14 11:41
 #
 #------------------------------------------
 
@@ -60,13 +60,13 @@ module HL7
       
       @file = file
       @file_text = ""
-      @records = []
+      @records = @text_as_messages = []
+      # @header_to_body = []   # an array of a hash, e.g. a two dimensional array with [header,body] pairs
       @max_records = recs_num.first
  
-      read_message     # updates @file_text
-      
-      @headers = @file_text.scan( HDR )           # all headers
-      @bodies = @file_text.split( HDR )[1..-1]    # split across headers, yielding bodies of individual records
+      read_message           # updates @file_text
+      break_into_messages    # updates @text_as_messages
+      get_records
     end
 
     # NAME: to_s
@@ -165,25 +165,29 @@ module HL7
     # sets @messages to contain all HL7 messages contained within @file_text, as HL7::Message objects
     # can access segments as @messages[index][segment_name]
     # e.g. hl7_messages_array[2][:PID] will return the PID segment of the 3rd record
-    def set_records
+    def get_records
       all_recs = records_by_text
       @records = all_recs.map{ |msg| Message.new( msg ) }
       @records.flatten!(1) unless @records.first.is_a? Message  # only flatten Arrays, not Messages/Segments etc.       
+    end
+ 
+    def break_into_messages
+      headers = @file_text.scan( HDR )           # all headers
+      bodies = @file_text.split( HDR )[1..-1]    # split across headers, yielding bodies of individual records
+      
+      for i in (0...headers.size)
+        @text_as_messages << headers[i] + bodies[i]
+      end
     end
         
     # returns array of strings containing hl7 message of individual records, based on @file_text
     def records_by_text
       all_recs = []
-      iterations = ( @max_records ? @max_records : @headers.size ) 
-      iterations.times {
-        header = @headers.shift
-        body = @bodies.shift
-        break if header.nil? || body.nil?
-        
-        all_recs << ( header + body )
-      }
-      all_recs
+      amount = ( @max_records ? @max_records : @text_as_messages.size )
+      @text_as_messages.shuffle!    # randomize to get the most diversity out of a sample set
+      @text_as_messages.shift( amount )
     end
+    
   end
 
 end

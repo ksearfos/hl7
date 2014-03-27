@@ -36,9 +36,7 @@
 #
 # CREATED BY: Kelli Searfos
 #
-# LAST UPDATED: 3/11/14 3:00 PM
-#
-# LAST TESTED: 3/12/14
+# LAST UPDATED: 3/27/14 11:41
 #
 #------------------------------------------
 module HL7
@@ -169,7 +167,7 @@ module HL7
     # EXAMPLE:
     #  field.as_datetime => 4/15/1983 7:23:56 AM
     def as_datetime
-      HL7Test.make_datetime( @original_text )
+      HL7.make_datetime( @original_text )
     end
 
     # NAME: as_name
