@@ -1,10 +1,9 @@
-$LOAD_PATH.unshift File.dirname __FILE__
-require 'Methods'
-require 'FileHandler'
-require 'Message'
-require 'Segment'
-require 'TypedSegment'
-require 'Field'
+require 'lib/hl7/Methods'
+require 'lib/hl7/FileHandler'
+require 'lib/hl7/Message'
+require 'lib/hl7/Segment'
+require 'lib/hl7/TypedSegment'
+require 'lib/hl7/Field'
 
 module HL7
  
