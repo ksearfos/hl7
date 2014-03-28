@@ -128,7 +128,7 @@ module HL7
     end
 
     def next
-      set_records  
+      get_records  
     end
         
     private
