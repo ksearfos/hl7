@@ -74,10 +74,10 @@ module HL7
   #   HL7.get_values(msg_list,"pid3") => all patient IDs appearing in the messages of msg_list
   def self.get_data( messages, field )
     data = []
-    messages.each{ |msg| data << msg.fetch_field(field) }
-    data.flatten!(1)   # only flatten arrays; don't flatten Fields
+    messages.each{ |message| data << message.fetch_field(field) }
+    data.flatten!   # we do want to flatten Fields here, so we can get to the text underneath
     data.uniq!
-    data.keep_if{ |e| !e.to_s.empty? }
+    data.keep_if{ |datum| !datum.to_s.empty? }
   end
 
 # ---------------------------- Methods to add formatting ---------------------------- #
