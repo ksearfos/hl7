@@ -16,7 +16,7 @@ module HL7
   SUB_DEF = "~"               # subcomponents of a field are separated by this by default
   SS_DEF = "\\"               # sub-subcomponents are separated by this by default (a single backslash)
   SSS_DEF = "&"               # sub-sub-subcomponents, if they are ever actually used, are separated by this by default
-  HDR = /\d+MSH|MSH/          # regex defining header row
+  HDR = /^\d*MSH\|/           # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
   
