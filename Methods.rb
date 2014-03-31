@@ -117,6 +117,7 @@ module HL7
   #   HL7.make_date( "19031105", "-" ) => 11-05-1903
   # Used by HL7::Field
   def self.make_date( date, delim = "/" )
+    return "" unless date.to_s.size >= 8
     yr = date[0...4]
     mon = date[4...6]
     day = date[6...8]
@@ -136,7 +137,8 @@ module HL7
   #   HL7.make_time( "1924", true ) => 19:24
   # Used by HL7::Field
   def self.make_time( time, military = false )
-    str = ""
+    return "" unless time.to_s.size >= 4
+
     hr = time[0...2]
     min = time[2...4]
     sec = time[4...6]

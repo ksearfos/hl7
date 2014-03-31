@@ -55,7 +55,7 @@
 module HL7
    
   class Message  
-    attr_accessor :segments, :lines, :original_text, :id, :type
+    attr_reader :segments, :lines, :id, :type
 
     # NAME: new
     # DESC: creates a new HL7::Message object from its original text
@@ -72,7 +72,7 @@ module HL7
       @separators = {}
       
       break_into_segments    # sets @lines, @segments
-      
+
       @id = header.message_control_id
       set_message_type
     end  
@@ -208,9 +208,8 @@ module HL7
       h[:PT_NAME] = @segments[:PID].field(:patient_name).as_name
       h[:PT_ID] = @segments[:PID].field(:mrn).first
       h[:PT_ACCT] = @segments[:PID].field(:account_number).first
-      dob = @segments[:PID].field(:dob)
-      h[:DOB] = dob ? dob.as_date : ""
-      
+      h[:DOB] = @segments[:PID].field(:dob).as_date
+
       if @type != :adt
         h[:PROC_NAME] = @segments[:OBR].procedure_id
         h[:PROC_DATE] = @segments[:OBR].field(7).as_datetime
@@ -334,7 +333,7 @@ module HL7
     def break_apart( lines )
       type_to_body = {}
       lines.each{ |line|
-        type, *body = line.split( @separators[:field] )    
+        type, *body = line.split( @separators[:field] ) 
         type = :MSH if type.include?( 'MSH' )
         type_to_body[type.to_sym] ||= []    # initialize to empty array if it hasn't been initialized yet
         type_to_body[type.to_sym] << body.join( @separators[:field] ) 

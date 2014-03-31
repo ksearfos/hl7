@@ -176,7 +176,7 @@ module HL7
       bodies = @file_text.split( HDR )[1..-1]    # split across headers, yielding bodies of individual records
       
       for i in (0...headers.size)
-        @text_as_messages << headers[i] + '|' + bodies[i]
+        @text_as_messages << headers[i] + bodies[i]
       end
     end
         
