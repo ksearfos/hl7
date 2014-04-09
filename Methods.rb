@@ -517,4 +517,12 @@ module HL7
     else false    # not a valid type, so how could we match it?
     end
   end  
+
+  # utility methods
+  # should be a utility method, but I probably ought to make a second subtree for that
+  def self.read_file_by_character(input_file, &block)
+    file = File.open( input_file, "r" )
+    file.each_char{ |char| yield(char) } 
+    file.close
+  end
 end

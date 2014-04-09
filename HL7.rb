@@ -21,6 +21,7 @@ module HL7
   HDR = /^\d*MSH\|/           # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
+  SEGMENT = /^#{HDR}|[A-Z]{2}[A-Z1]{1}\|/    # regex defining a properly-formatted segment
   
   # a list of all possible message types can be found at http://www.interfaceware.com/hl7-standard/hl7-messages.html
   ORDER_MESSAGE_TYPE = "ORU^O01"

@@ -65,16 +65,8 @@ describe HL7::FileHandler do
     end
   end
 
-  context "when sent a message it does not recognize" do
-    it "thows an exception" do
-      expect { handler.fakey_method }.to raise_exception 
-    end
+  it_behaves_like "HL7 object" do
+    let(:object) { handler }
   end
-  
-  describe "#to_s" do
-    it "converts a FileHandler to a String" do
-      handler.to_s.should be_a String
-    end
-  end
-  
+
 end    

@@ -88,29 +88,6 @@ module HL7
       @original_text
     end
 
-    # NAME: []
-    # DESC: returns Segment of given type
-    # ARGS: 1
-    #  key [Symbol] - the type of segment, a key in the @segments hash
-    # RETURNS:
-    #  [Segment] the segment object -- generally actually in object of one of the Segment child classes
-    # EXAMPLE:
-    #  segment[:PID] => PID object      
-    def []( key )
-      @segments.has_key?(key) ? @segments[key] : []
-    end
-
-    # NAME: each
-    # DESC: performs actions for each segment type-object pair
-    # ARGS: 1
-    #  [code block] - the code to execute on each pair
-    # RETURNS: nothing, unless specified in the code block
-    # EXAMPLE:
-    #  message.each{ |k,v| print k + ":" + v.to_s + " & "} => MSH:a|b|c & PID:a|b|c & PV1:a|b|c   
-    def each
-      @segments.each_pair{ |seg_type,seg_obj| yield(seg_type,seg_obj) }  
-    end
-
     # NAME: each_segment
     # DESC: performs actions for each segment in the message
     # ARGS: 1
@@ -139,14 +116,9 @@ module HL7
     #  message.gsub( "*", "\n|^" ) => "MSH*a*b*c*PID*a*b*c*PV1*a*b*c" (calls @original_text.gsub)
     #  message.fake_method => throws NoMethodError    
     def method_missing( sym, *args, &block )
-      if Array.method_defined?( sym )
-        @segments.values.send( sym, *args )
-      elsif Hash.method_defined?( sym )
-        @segments.send( sym, *args )
-      elsif String.method_defined?( sym )
-        @original_text.send( sym, *args )
-      else
-        super
+      hash_arguments_it_responds_to = [:each, :[]]
+      if hash_arguments_it_responds_to.include?(sym) then @segments.send(sym, *args)
+      else super
       end
     end
 

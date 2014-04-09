@@ -2,6 +2,7 @@ $LOAD_PATH.unshift File.expand_path("../..",__FILE__)
 
 require 'rspec'
 require 'HL7'
+require 'shared_examples'
 
 # data of various types
 $str = "20535^Watson^David^D^^^MD^^^^^^STARPROV"
@@ -65,9 +66,6 @@ RAD
 
 $lab_message = HL7::Message.new( $lab_str )
 $rad_message = HL7::Message.new( $rad_str )
-
-file = "C:/Users/Owner/Documents/script_input/rad_post.txt"
-$file_handler = HL7::FileHandler.new( file )
 
 RSpec.configure do |c|
   c.fail_fast = true
