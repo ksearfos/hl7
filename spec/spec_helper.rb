@@ -3,6 +3,7 @@ $LOAD_PATH.unshift File.expand_path("../..",__FILE__)
 require 'rspec'
 require 'HL7'
 require 'shared_examples'
+require 'stringio'
 
 # data of various types
 $str = "20535^Watson^David^D^^^MD^^^^^^STARPROV"
@@ -73,12 +74,12 @@ end
 
 # takes the code expected to print to stdout
 # returns string that was written
-# I copied this from one of the nice people on StackOverflow... I can't necessarily explain how it works
-def capture_stdout(&blk)
+# I copied this from one of the nice people on StackOverflow, see http://stackoverflow.com/questions/16507067/testing-stdout-output-in-rspec
+def capture_stdout(&printing_action)
   old = $stdout
-  $stdout = fake = StringIO.new
-  blk.call
-  fake.string
+  $stdout = next_stdout = StringIO.new
+  printing_action.call
+  next_stdout.string
 ensure
   $stdout = old
 end

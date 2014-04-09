@@ -47,11 +47,7 @@ module HL7
     # ARGS: 1-2
     #  file [String] - complete path to the source file
     #  limit [Integer] - highest number of records to use at one time - 10,000 by default
-    # N.B. I've found that storing more than 10,000 Message objects at once usually causes memory allocation errors
-    # RETURNS:
-    #  [HL7::FileHandler] newly-created FileHandler
-    # EXAMPLE:
-    #  HL7::FileHandler.new( "C:\records.txt", 2 ) => new FileHandler pointed to records.txt, with 2 records total  
+    # N.B. I've found that storing more than 10,000 Message objects at once usually causes memory allocation errors 
     def initialize( file, limit = 10000 )
       raise HL7::NoFileError, "No such file: #{file}" unless File.exists?(file)
     

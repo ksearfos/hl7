@@ -5,7 +5,7 @@ require 'spec_helper'
 describe HL7::Message do
   let(:text) do
     <<-END_TEXT
-    0000000729MSH|^~\&|HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4
+    012345MSH|^~\&|HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4
     PID|||00487630^^^ST01||Thompson^Richard^L||19641230|M|||^^^^^^^|||||||A2057219^^^^STARACC|291668118
     PV1||Null value detected|||||20535^Watson^David^D^^^MD^^^^^^STARPROV|||||||||||12|A2057219^^^^STARACC|||||||||||||||||
     ORC|RE
@@ -14,7 +14,7 @@ describe HL7::Message do
     OBX|2|TX|APRESULT^.^LA01|3|  Name: GILLISPIE, MARODA          GGC-11-072157||||||F
     NTE|1||Testing performed by Grady Memorial Hospital, 561 West Central Ave., Delaware, Ohio, 43015, UNLESS otherwise noted.
     END_TEXT
-  end  
+  end 
   let(:message) { HL7::Message.new(text) }
   
   it "has a list of segments by name" do
@@ -39,7 +39,7 @@ describe HL7::Message do
   
   context "multiple segments of the same type" do
     it "are stored together" do
-      expect(message[:OBX]).to be_a HL7::OBX
+      expect(message[:OBX].size).to be > 1
     end
   end    
 
@@ -58,8 +58,33 @@ describe HL7::Message do
   end
   
   describe "#details" do
-    it "collects important details from the message" do
-      expect(message.details).not_to be_empty
+    context "when no specific details are requested" do
+      it "collects all important details from the message" do
+        expect(message.details).not_to be_empty
+      end
+    end
+    
+    context "when specific details are requested" do
+      it "collects only the desired details" do
+        expect(message.details(:id, :pt_name).size).to eq(2)
+      end
+    end
+  end
+  
+  describe "#view_segments" do
+    it "displays the segments, neatly formatted" do
+      segment_text =<<END_TEXT
+MSH: ^~\&|HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4
+PID: ||00487630^^^ST01||Thompson^Richard^L||19641230|M|||^^^^^^^|||||||A2057219^^^^STARACC|291668118
+PV1: |Null value detected|||||20535^Watson^David^D^^^MD^^^^^^STARPROV|||||||||||12|A2057219^^^^STARACC|||||||||||||||||
+ORC: RE
+OBR: ||4A  A61302526|4ATRPOC^^OHHOREAP|||201110131555|||||||||A00384^Watson^David^D^^^MD^^STARPROV||||||201110131555|||F
+OBX: 1|TX|APRESULT^.^LA01|2|  REPORT||||||F
+OBX: 2|TX|APRESULT^.^LA01|3|  Name: GILLISPIE, MARODA          GGC-11-072157||||||F
+NTE: 1||Testing performed by Grady Memorial Hospital, 561 West Central Ave., Delaware, Ohio, 43015, UNLESS otherwise noted.
+END_TEXT
+      printed_text = capture_stdout { message.view_segments }
+      expect(printed_text).to eq(segment_text)
     end
   end
   
@@ -77,5 +102,8 @@ describe HL7::Message do
   
   it_behaves_like "HL7 object" do
     let(:object) { message }
-  end
+    let(:klass) { HL7::Message }
+    let(:bad_input) { "this is just a random sentence\n we can add MSH|but it will not help" }
+    let(:empty_input) { "" }
+  end  
 end

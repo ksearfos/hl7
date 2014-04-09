@@ -15,4 +15,16 @@ shared_examples "HL7 object" do
     end
   end
   
-end    
+  context "when given empty text" do
+    it "throws an exception" do
+      expect { klass.new(empty_input) }.to raise_exception
+    end
+  end
+  
+  context "when given non-HL7 text" do  
+    it "throws an exception" do
+      expect { klass.new(bad_input) }.to raise_exception
+    end
+  end
+  
+end

@@ -26,22 +26,6 @@ describe HL7::FileHandler do
       expect { HL7::FileHandler.new(file) }.to raise_exception
     end
   end
-  
-  context "when given an empty file" do
-    let(:file) { "#{test_data_directory}/empty_file.txt" }
-    
-    it "throws an exception" do
-      expect { HL7::FileHandler.new(file) }.to raise_exception
-    end
-  end
-  
-  context "when given a file that does not contain HL7" do
-    let(:file) { "#{test_data_directory}/non_hl7_file.txt" }
-    
-    it "throws an exception" do
-      expect { HL7::FileHandler.new(file) }.to raise_exception
-    end
-  end
  
   context "when given a file in non-standard format" do
     let(:file) { "#{test_data_directory}/dat_input.dat" }
@@ -67,6 +51,9 @@ describe HL7::FileHandler do
 
   it_behaves_like "HL7 object" do
     let(:object) { handler }
-  end
-
+    let(:klass) { HL7::FileHandler }
+    let(:bad_input) { "#{test_data_directory}/non_hl7_file.txt" }
+    let(:empty_input) { "#{test_data_directory}/empty_file.txt" }
+  end  
+  
 end    

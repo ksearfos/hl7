@@ -11,6 +11,7 @@ module HL7
   class Exception < StandardError; end
   class NoFileError < HL7::Exception; end
   class BadFileError < HL7::Exception; end
+  class InputError < HL7::Exception; end
   
   SEG_DELIM = "\n"            # split into segments across lines, currently
   FIELD_DEF = "|"             # fields of a segment are separated by this by default
@@ -21,7 +22,7 @@ module HL7
   HDR = /^\d*MSH\|/           # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
-  SEGMENT = /^#{HDR}|[A-Z]{2}[A-Z1]{1}\|/    # regex defining a properly-formatted segment
+  SEGMENT = /[A-Z]{2}[A-Z1]{1}\|/    # regex defining a properly-formatted segment
   
   # a list of all possible message types can be found at http://www.interfaceware.com/hl7-standard/hl7-messages.html
   ORDER_MESSAGE_TYPE = "ORU^O01"
