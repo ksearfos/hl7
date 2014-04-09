@@ -1,14 +1,16 @@
-require 'lib/hl7/Methods'
-require 'lib/hl7/FileHandler'
-require 'lib/hl7/Message'
-require 'lib/hl7/Segment'
-require 'lib/hl7/TypedSegment'
-require 'lib/hl7/Field'
+$:.unshift(File.dirname(__FILE__))
+require 'Methods'
+require 'FileHandler'
+require 'Message'
+require 'Segment'
+require 'TypedSegment'
+require 'Field'
 
 module HL7
  
   class Exception < StandardError; end
-  class FileError < HL7::Exception; end
+  class NoFileError < HL7::Exception; end
+  class BadFileError < HL7::Exception; end
   
   SEG_DELIM = "\n"            # split into segments across lines, currently
   FIELD_DEF = "|"             # fields of a segment are separated by this by default

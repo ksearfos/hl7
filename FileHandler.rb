@@ -56,7 +56,7 @@ module HL7
     # EXAMPLE:
     #  HL7::FileHandler.new( "C:\records.txt", 2 ) => new FileHandler pointed to records.txt, with 2 records total  
     def initialize( file, *recs_num )
-      raise HL7::FileError, "No such file: #{file}" unless File.exists?(file)
+      raise HL7::NoFileError, "No such file: #{file}" unless File.exists?(file)
       
       @file = file
       @file_text = ""
@@ -80,29 +80,6 @@ module HL7
       @file_text
     end
 
-    # NAME: []
-    # DESC: returns record (Message object) at given index
-    # ARGS: 1
-    #  index [Integer] - the index of the record we want
-    # RETURNS:
-    #  [Message] an individual Message/record
-    # EXAMPLE:
-    #  message_handler[2] => Message3    
-    def []( index )
-      @records[index]
-    end
-
-    # NAME: each
-    # DESC: performs actions for each record
-    # ARGS: 1
-    #  [code block] - the code to execute on each component
-    # RETURNS: nothing, unless specified in the code block
-    # EXAMPLE:
-    #  message_handler.each{ |rec| print rec.id + " & " } => 12345 & 12458 & 12045 
-    def each
-      @records.each{ |rec| yield(rec) }
-    end
-
     # NAME: method_missing
     # DESC: handles methods not defined for the class
     # ARGS: 1+
@@ -118,15 +95,21 @@ module HL7
     #  message_handler.gsub( "*", "|" ) => "MSH*...MSH*...MSH*..."  (calls @file_text.gsub)
     #  message_handler.fake_method => throws NoMethodError    
     def method_missing( sym, *args, &block )
-      if Array.method_defined?( sym )
-        @records.send( sym, *args )
-      elsif String.method_defined?( sym )
-        @file_text.send( sym, *args )
-      else
-        super
+      array_methods_it_responds_to = [:first, :last, :size, :[], :each]
+      if array_methods_it_responds_to.include?(sym) then @records.send(sym, *args)
+      else super
       end
     end
 
+    # runs the code block for all records in the file read by the file handler, in increments of @max_records
+    # e.g. by default runs the code block for 10,000 records at a time
+    def do_in_increments(&block)
+      begin
+        yield(@records)
+        self.next
+      end until @records.empty?
+    end
+    
     def next
       get_records  
     end
@@ -136,10 +119,9 @@ module HL7
     # reads in a HL7 message as a text file from the given filepath and stores it in @file_text
     # changes coding to end in \n for easier parsing
     def read_message
-      unless File.zero?( @file )
-        read_text
-        polish_text     
-      end
+      raise HL7::BadFileError, "Cannot create FileHandler from empty file" if File.zero?(@file)
+      read_text
+      polish_text     
     end
     
     def read_text
@@ -174,6 +156,7 @@ module HL7
     def break_into_messages
       headers = @file_text.scan( HDR )           # all headers
       bodies = @file_text.split( HDR )[1..-1]    # split across headers, yielding bodies of individual records
+      raise HL7::BadFileError, "FileHandler requires a file containing HL7 messages" if headers.empty?
       
       for i in (0...headers.size)
         @text_as_messages << headers[i] + bodies[i]

@@ -1,0 +1,2 @@
+This is a normal text file.
+You will not that it does not contain HL7 data.
