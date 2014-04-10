@@ -30,7 +30,7 @@
 #    new(message_text): creates new Message object based off of given text
 #    to_s: returns String form of Message, which is the text the message was derived from
 #    each_segment(&block): loops through each segment object, executing given code
-#    method_missing: calls certain Array methods on @records
+#    method_missing: calls certain Hash methods on @segments
 #                    otherwise throws exception
 #    header: returns the message header, e.g. the MSH segment object
 #    details: returns important details for quick summary
@@ -97,8 +97,8 @@ module HL7
     #  message.size => 5
     #  message.balloon => throws NoMethodError    
     def method_missing( sym, *args, &block )
-      hash_arguments_it_responds_to = [:size, :each, :[]]
-      if hash_arguments_it_responds_to.include?(sym) then @segments.send(sym, *args)
+      methods_it_responds_to = [:size, :each, :[]]
+      if methods_it_responds_to.include?(sym) then @segments.send(sym, *args)
       else super
       end
     end
@@ -247,9 +247,8 @@ module HL7
     
     # called by parse_out_segments_from_text    
     # type is a string, body is an array of strings
-    def add_segment( type, body )
-      clazz = HL7.typed_segment( type )
-      @segments[type] = clazz.new( @separators.clone, *body )  
+    def add_segment(type, lines)
+      @segments[type] = Segment.new(@separators.clone, type, *lines)   # initialize segment type, if this is the first time we've encountered it 
     end
 
     def set_message_type

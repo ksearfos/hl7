@@ -79,8 +79,8 @@ module HL7
     #  message_handler.size => 3
     #  message_handler.balloon => throws NoMethodError    
     def method_missing(sym, *args, &block)
-      array_methods_it_responds_to = [:first, :last, :size, :[], :each]
-      if array_methods_it_responds_to.include?(sym) then @records.send(sym, *args)
+      methods_it_responds_to = [:first, :last, :size, :[], :each]
+      if methods_it_responds_to.include?(sym) then @records.send(sym, *args)
       else super
       end
     end
