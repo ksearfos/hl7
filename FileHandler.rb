@@ -15,7 +15,7 @@
 #
 # EXAMPLE: FileHandler => "MSH|...MSH|...MSH|..." / [ Message1, Message2, Message 3 ]
 #
-# CLASS VARIABLES: none; uses HL7::SEG_DELIM and modifies HL7.separators
+# CLASS VARIABLES: none; uses HL7.separators[:segment] and modifies HL7.separators
 #
 # READ-ONLY INSTANCE VARIABLES:
 #    @file [String]: the name of the file this FileHandler reads from
@@ -39,7 +39,7 @@
 
 module HL7
   class FileHandler
-    @@eol = "\n"    # the end-of-line character we are using
+    EOL = "\n"    # the end-of-line character we are using
     attr_reader :records, :file
     
     # NAME: new
@@ -114,7 +114,7 @@ module HL7
     # reads full text of the file, one character at a time (to handle \r correctly)
     def read_file_text
       HL7.read_file_by_character(@file) do |character|
-        @file_text << character == "\r" ? @@eol : character
+        @file_text << character == "\r" ? EOL : character
       end
     end  
 
@@ -123,19 +123,19 @@ module HL7
     def format_as_segment_text
       standardize_endline_character
     
-      lines = @file_text.split(@@eol)    # split across file's newline character...
+      lines = @file_text.split(EOL)    # split across file's newline character...
       lines.delete_if { |line| line !~ HL7::SEGMENT }  
       raise_error_if(lines.empty?)     
     
-      @file_text = lines * HL7::SEG_DELIM     # ...join using message's newline character
+      @file_text = lines * HL7.separators[:segment]     # ...join using message's newline character
     end                                             
   
     # called by polish_text
-    # replaces \r, \r\n with @@eol, and adds a newline before MSH segments
+    # replaces \r, \r\n with EOL, and adds a newline before MSH segments
     def standardize_endline_character
-      @file_text.gsub!('\\r', @@eol)  
-      @file_text.gsub!("MSH", "#{@@eol}MSH")
-      @file_text.squeeze!(@@eol)
+      @file_text.gsub!('\\r', EOL)  
+      @file_text.gsub!("MSH", "#{EOL}MSH")
+      @file_text.squeeze!(EOL)
     end
 
     # called by initialize
@@ -155,8 +155,7 @@ module HL7
     # gets the next @max_size messages, as HL7::Message objects
     # modifies @records
     def get_records
-      @records = next_set_of_messages.map { |message| Message.new(message) }
-      # @records.flatten! unless @records.first.is_a? Message  # only flatten Arrays, not Messages/Segments etc.       
+      @records = next_set_of_messages.map { |message| Message.new(message) }      
     end
   
     # called by get_records      

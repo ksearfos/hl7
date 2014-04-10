@@ -2,9 +2,9 @@ $:.unshift(File.dirname(__FILE__))
 require 'Methods'
 require 'FileHandler'
 require 'Message'
-require 'Segment'
-require 'TypedSegment'
-require 'Field'
+# require 'Segment'
+# require 'TypedSegment'
+# require 'Field'
 
 module HL7
  
@@ -13,12 +13,9 @@ module HL7
   class BadFileError < HL7::Exception; end
   class InputError < HL7::Exception; end
   
-  SEG_DELIM = "\n"            # split into segments across lines, currently
-  FIELD_DEF = "|"             # fields of a segment are separated by this by default
-  COMP_DEF = "^"              # components in a field are separated by this by default
-  SUB_DEF = "~"               # subcomponents of a field are separated by this by default
-  SS_DEF = "\\"               # sub-subcomponents are separated by this by default (a single backslash)
-  SSS_DEF = "&"               # sub-sub-subcomponents, if they are ever actually used, are separated by this by default
+  class << self; attr_accessor :separators; end
+  @separators = { segment:"\n", field:"|", component:"^", subcomp:"~", subsubcomp:"\\", sub_subsubcomp:"&" }
+
   HDR = /^\d*MSH\|/           # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
@@ -81,9 +78,5 @@ module HL7
 
   # I cannot find a full list of NTE fields                 
   NTE_FIELDS = { :set_id => 1, :value => 3 }                                             
-
-  @separators = { :field => FIELD_DEF, :comp => COMP_DEF, :subcomp => SUB_DEF, :subsub => SS_DEF, :sub_subsub => SSS_DEF }
-  class << self
-    attr_accessor :separators
-  end
+  
 end

@@ -138,5 +138,19 @@ module HL7
         
     klass
   end
-        
+
+    def field_index( which )
+      if which.is_a?( Integer )
+        i = which < 0 ? which : which - 1
+        i     # field count starts at 1, but array index starts at 0
+      elsif ( which.is_a?(String) || which.is_a?(Symbol) ) && self.class.is_eigenclass?  # @field_index_maps is defined?
+        s = which.downcase.to_sym
+        i = field_index_maps[s]
+        i ? i - 1 : @@no_index_val
+      else
+        puts "Cannot find field of type #{which.class}"
+        @@no_index_val
+      end
+    end
+  end        
 end
