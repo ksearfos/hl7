@@ -13,9 +13,18 @@ module HL7
   class BadFileError < HL7::Exception; end
   class InputError < HL7::Exception; end
   
-  class << self; attr_accessor :separators; end
+  class << self; attr_reader :separators; end
   @separators = { segment:"\n", field:"|", component:"^", subcomp:"~", subsubcomp:"\\", sub_subsubcomp:"&" }
-
+  SEPARATOR_OFFSETS = { field: 0, component: 1, subcomp: 2, subsubcomp: 3, sub_subsubcomp: 4 }
+  
+  def self.extract_separators_from_message(header_text)
+    starting_index = header_text.index("MSH") + 3   # first character after the MSH
+    SEPARATOR_OFFSETS.each do |name,offset|
+      index = starting_index + offset
+      @separators[name] = header_text[index]
+    end
+  end
+  
   HDR = /^\d*MSH\|/           # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID

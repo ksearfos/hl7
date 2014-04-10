@@ -15,7 +15,7 @@
 #
 # EXAMPLE: Message => "MSH|...\nPID|...\nPV1|...\nOBX|1|...\nOBX|2|..." / {:MSH=>Seg1,:PID=>Seg2,:PV1=>Seg3,:OBX=>Seg4}
 #
-# CLASS VARIABLES: none; uses HL7::SEG_DELIM
+# CLASS VARIABLES: none; uses HL7.separators[:segment]
 #
 # READ-ONLY INSTANCE VARIABLES:
 #    @lines [Array]: stores segment types in the order in which the lines appear in the message, e.g. [:MSH,:PID,:PV1,:OBX,:OBX]
@@ -49,7 +49,7 @@
 module HL7
    
   class Message  
-    attr_reader :segments, :lines, :id, :type
+    attr_reader :segments, :segments_in_order, :type
 
     # NAME: new
     # DESC: creates a new HL7::Message object from its original text
@@ -58,15 +58,14 @@ module HL7
     def initialize(message_text)
       raise_error_if(message_text.empty?)
       
-      @original_text = message_text
-      @lines = []            # the list of segments, in order
+      @original_text = message_text.split(HL7.separators[:segment])
+      @segments_in_order = []
       @segments = {}         # map of segments by type => { :SEG_TYPE => Segment object }
-      @separators = {}       # the separators used by this HL7 message
       @type = :""
       
-      break_into_segments    # updates @lines, @segments @separators
+      HL7.extract_separators_from_message(@original_text.first)   # updates HL7::@separators 
+      break_into_segments    # updates @lines, @segments
       set_message_type       # updates @type
-      @id = header.message_control_id
     end  
 
     # NAME: to_s
@@ -75,7 +74,7 @@ module HL7
     # RETURNS:
     #  [String] the original text of the message   
     def to_s
-      @original_text
+      @original_text * HL7.separators[:segment]
     end
 
     # NAME: each_segment
@@ -113,7 +112,11 @@ module HL7
     def header
       @segments[:MSH]
     end
-    
+
+    def id
+      header.message_control_id
+    end
+        
     # NAME: details
     # DESC: compiles crucial information about the message, clearly labelled
     # ARGS: 0+
@@ -145,11 +148,7 @@ module HL7
     #                           OBX: 1|TX|||I like chocolate this much:
     #                           OBX: 2|TX|||<-------------------------->                        
     def view_segments
-      @segments.each{ |type, object| 
-        name = "#{type.to_s}: "
-        print name, object.lines * "\n#{name}"
-        print "\n" 
-      }
+      @segments.values.flatten.each { |object| object.show }
     end
 
     # NAME: fetch_field
@@ -177,8 +176,8 @@ module HL7
     # EXAMPLE:
     #  message.segment_before(:PID) => :MSH  
     def segment_before(segment)
-      i = @lines.index(segment)
-      @lines[i-1]
+      i = @segments_in_order.index(segment)
+      @segments_in_order[i-1]
     end
 
     # NAME: segment_after
@@ -190,65 +189,52 @@ module HL7
     # EXAMPLE:
     #  message.segment_after(:PID) => :PV1    
     def segment_after(segment)
-      i = @lines.index(segment)
-      @lines[i+1]
+      i = @segments_in_order.index(segment)
+      @segments_in_order[i+1]
     end
     
     private
     
     # called by initialize
     # breaks the text into segments by name
-    # updates @lines, @segments, @separators
     def break_into_segments    
-      lines = @original_text.split(HL7::SEG_DELIM)
-      parse_out_separators(lines.first)    # sets @separators; first line is always the header 
-      find_segment_types(lines)            # sets @lines
-      parse_out_segments_from_text(lines)  # sets @segments
+      lines = @original_text.map { |text| HL7::SegmentText.new(text) }
+      lines.each do |st_object| 
+        type = st_object.type
+        @segments_in_order << type
+        @segments[type] = HL7::Segment.new(st_object.text)
+      end
+      @segments_in_order.uniq!
     end
     
     # called by break_into_segments
     # identifies all segments found in the text by type
     # updates @lines
-    def find_segment_types(all_lines)
-      all_lines.each do |line|
-        raise_error_if(line !~ HL7::SEGMENT)
-        @lines << line[HL7::SEGMENT].chop.to_sym   # remember, it ends with the field delimiter (|)
-      end    
-      @lines.uniq!
-    end
-    
-    # called by break_into_segments
-    # updates @separators
-    def parse_out_separators(header_text)    
-      i = header_text.index("MSH") + 3       # index of the first character after 'MSH'
-      @separators = { field: header_text[i],
-                      comp: header_text[i+1],
-                      subcomp: header_text[i+2],
-                      subsub: header_text[i+3], 
-                      sub_subsub: header_text[i+4]
-                    } 
-    end
+    # def find_segment_types(all_lines)
+      # all_lines.each { |line| @lines << segment_type(line) }    
+      # @lines.uniq!
+    # end
 
     # called by break_into_segments
-    def parse_out_segments_from_text(all_lines)
-      @lines.each do |segment_type|
-        segment_text = all_lines_in_segment(segment_type, all_lines) 
-        add_segment(segment_type, segment_text)  
-      end
-    end
+    # def parse_out_segments_from_text(all_lines)
+      # @lines.each do |segment_type|
+        # segment_text = all_lines_in_segment(segment_type, all_lines) 
+        # add_segment(segment_type, segment_text)  
+      # end
+    # end
 
     # called by parse_out_segments_from_text
-    def all_lines_in_segment(segment_type, all_lines)
-      segment_lines = all_lines.clone
-      segment_lines.keep_if { |line| line.include?(segment_type.to_s) } 
-      raise_error_if(segment_lines.empty?)
-      segment_lines
-    end
+    # def all_lines_in_segment(segment_type, all_lines)
+      # segment_lines = all_lines.clone
+      # segment_lines.keep_if { |line| line.include?(segment_type.to_s) } 
+      # raise_error_if(segment_lines.empty?)
+      # segment_lines
+    # end
     
     # called by parse_out_segments_from_text    
     # type is a string, body is an array of strings
     def add_segment(type, lines)
-      @segments[type] = Segment.new(@separators.clone, type, *lines)   # initialize segment type, if this is the first time we've encountered it 
+      @segments[type] = Segment.new(type, *lines)   # initialize segment type, if this is the first time we've encountered it 
     end
 
     def set_message_type
@@ -257,6 +243,16 @@ module HL7
       elsif type =~ /RAD/ then @type = :rad
       else @type = :enc
       end
+    end
+    
+    # def segment_type(segment_text)
+      # type = segment_text[HL7::SEGMENT]
+      # raise_error_if(type.nil?)
+      # type.chop.to_sym   # remember, it ends with the field delimiter (|)
+    # end
+      
+    def original_text_by_lines
+      @original_text.split(HL7.separators[:segment])
     end
     
     # called by details
@@ -280,5 +276,6 @@ module HL7
     def raise_error_if(condition)
       raise HL7::InputError, "HL7::Message can only be initialized from valid HL7 text" if condition
     end
+    
   end
 end

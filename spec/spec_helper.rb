@@ -67,15 +67,7 @@ end
 
 class TestMessage < HL7::Message
   def initialize(message_text)
-    raise_error_if(message_text.empty?)
-    @original_text = message_text
-    @lines = []            # the list of segments, in order
-    @segments = {}         # map of segments by type => { :SEG_TYPE => Segment object }
-    @separators = {}       # the separators used by this HL7 message
-    @type = :""
-    break_into_segments    # updates @lines, @segments @separators
-    set_message_type       # updates @type
-    @id = "1234"
+    super
   end  
 
   def details(*all)
@@ -91,5 +83,16 @@ class TestMessage < HL7::Message
     
   def add_segment(type, lines)
     @segments[type] = lines 
+  end
+  
+  def break_into_segments    
+    @segments_in_order = [:MSH, :PID, :PV1, :ORC, :OBR, :OBX, :NTE]
+    @segments[:MSH] = "012345MSH|^~\&|HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4"
+    @segments[:PID] = "PID|||00487630^^^ST01||Thompson^Richard^L||19641230|M|||^^^^^^^|||||||A2057219^^^^STARACC|291668118"
+    @segments[:PV1] = "PV1||Null value detected|||||20535^Watson^David^D^^^MD^^^^^^STARPROV||"
+    @segments[:ORC] = "ORC|RE"
+    @segments[:OBR] = "OBR|||4A  A61302526|4ATRPOC^^OHHOREAP|||201110131555||||"
+    @segments[:OBX] = ["OBX|1|TX|APRESULT^.^LA01|2|  REPORT||||||F"]
+    @segments[:OBX] << "OBX|2|TX|APRESULT^.^LA01|3|  Name: GILLISPIE, MARODA          GGC-11-072157||||||F"
   end
 end
