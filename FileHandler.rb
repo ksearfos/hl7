@@ -8,7 +8,7 @@
 #         for treating the file text as a HL7 message.
 #       Performs minor reformatting to insure there are no blank lines, and all line breaks are done with \n and not \r
 #       The message handler class takes a filepath where HL7 data is stored, reads from it, and standardizes the format of
-#         the text. It then breaks the text into individual records and initializes Message objects from those. It will also
+#         the text. It then breaks the text into individual messages and initializes Message objects from those. It will also
 #         keep track of each of those Messages and the value separators used by the message.
 #       It is assumed that the file is in a valid text format and uses either the Windows-style line endings (\r and \r\n)
 #         or the Unix style (\n). It also assumes the file is UTF-8 encoded.
@@ -19,17 +19,17 @@
 #
 # READ-ONLY INSTANCE VARIABLES:
 #    @file [String]: the name of the file this FileHandler reads from
-#    @records [Array]: stores individual records/messages as Message objects
+#    @messages [Array]: stores individual messages/messages as Message objects
 #
 # CLASS METHODS: none
 #
 # INSTANCE METHODS:
-#    new(file,limit): creates new FileHandler object and reads in text from file, up to limit records (if specified)
+#    new(file,limit): creates new FileHandler object and reads in text from file, up to limit messages (if specified)
 #    to_s: returns String form of FileHandler, which is the text of the file
-#    method_missing: calls certain Array methods on @records
+#    method_missing: calls certain Array methods on @messages
 #                    otherwise throws exception
-#    do_in_increments(&block): runs the code block for each set of records
-#    next: gets the next @max_records records and stores them in @records - @records will be empty if there were no more
+#    do_in_increments(&block): runs the code block for each set of messages
+#    next: gets the next @limit messages and stores them in @messages - @messages will be empty if there were no more
 #
 # CREATED BY: Kelli Searfos
 #
@@ -40,28 +40,41 @@
 module HL7
   class FileHandler
     EOL = "\n"    # the end-of-line character we are using
-    attr_reader :records, :file
+    attr_reader :file
+    attr_writer :limit
     
     # NAME: new
     # DESC: creates a new HL7::FileHandler object from a text file
     # ARGS: 1-2
     #  file [String] - complete path to the source file
-    #  limit [Integer] - highest number of records to use at one time - 10,000 by default
+    #  limit [Integer] - highest number of messages to use at one time - 10,000 by default
     # N.B. I've found that storing more than 10,000 Message objects at once usually causes memory allocation errors 
-    def initialize( file, limit = 10000 )
-      raise HL7::NoFileError, "No such file: #{file}" unless File.exists?(file)
+    def initialize(file, limit = 10000)
+      raise HL7::NoFileError, file unless File.exists?(file)
     
       @file = file
-      @file_text = ""          # the original text
-      @message_text = []       # the text of each message
-      @records = []            # all records/messages, as HL7::Message objects
-      @max_records = limit     # the largest size @records can have
- 
-      read_message             # updates @file_text
-      break_into_messages      # updates @message_text
-      get_records              # updates @records
+      @limit = limit                      # the largest size @messages can have
+      read_text_from_file                 # sets @file_text
+      convert_file_text_to_message_text   # sets @message_text
     end
 
+    # NAME: do_for_each_message
+    # DESC: executes code for all messages in the file, in groups of @limit
+    # ARGS: 1
+    #   block [code block] - the code to execute
+    # RETURNS: depends on code block  
+    def do_for_all_messages(&block)     
+      @message_text.shuffle!
+      @message_text.each_slice(@limit) do |set|
+        messages = get_messages(set)
+        messages.each { |message| yield(message) }
+      end
+    end
+    
+    def size
+      @message_text.size
+    end
+    
     # NAME: to_s
     # DESC: returns the message handler as a String object - basically the text of the file
     # ARGS: none 
@@ -74,114 +87,92 @@ module HL7
     # NAME: method_missing
     # DESC: handles methods not defined for the class
     # MATCHES METHODS: Array#first, Array#last, Array#size, Array#each, Array#[]
-    #                  calls matched method on @records; otherwise, throws exception
+    #                  calls matched method on @messages; otherwise, throws exception
     # EXAMPLE:
     #  message_handler.size => 3
     #  message_handler.balloon => throws NoMethodError    
     def method_missing(sym, *args, &block)
       methods_it_responds_to = [:first, :last, :size, :[], :each]
-      if methods_it_responds_to.include?(sym) then @records.send(sym, *args)
+      if methods_it_responds_to.include?(sym) then @messages.send(sym, *args)
       else super
       end
-    end
-
-    # runs the code block for all records in the file read by the file handler, in increments of @max_records
-    # e.g. by default runs the code block for 10,000 records at a time
-    # NAME: do_in_increments
-    # DESC: executes code for all records in the file, in groups of @max_records
-    # ARGS: 1
-    #   block [code block] - the code to execute
-    # RETURNS: depends on code block  
-    def do_in_increments(&block)
-      until @records.empty?
-        yield(@records)
-        get_records
-      end 
     end
   
     private  
   
     # called by initialize
-    # reads in a HL7 message as a text file from the given filepath
-    # updates @file_text
-    def read_message
+    def read_text_from_file
       raise HL7::BadFileError, "Cannot create FileHandler from empty file" if File.zero?(@file)
       read_file_text
+      standardize_endline_character
       format_as_segment_text    
     end
   
-    # called by read_message
-    # reads full text of the file, one character at a time (to handle \r correctly)
+    # called by read_text_from_file
     def read_file_text
+      @file_text = ""
+      
       HL7.read_file_by_character(@file) do |character|
         @file_text << character == "\r" ? EOL : character
       end
     end  
 
-    # called by read_message
-    # removes empty lines and non-segment lines, and turns all endline characters into the standard segment delimiter
-    def format_as_segment_text
-      standardize_endline_character
-    
-      lines = @file_text.split(EOL)    # split across file's newline character...
-      lines.delete_if { |line| line !~ HL7::SEGMENT }  
-      raise_error_if(lines.empty?)     
-    
-      @file_text = lines * HL7.separators[:segment]     # ...join using message's newline character
+    # called by read_text_from_file
+    def format_as_segment_text      
+      lines = remove_non_hl7_lines
+      raise_error_if(lines.empty?)
+           
+      @file_text = lines * HL7.separators[:segment]
     end                                             
   
-    # called by polish_text
-    # replaces \r, \r\n with EOL, and adds a newline before MSH segments
+    # called by read_text_from_file
     def standardize_endline_character
       @file_text.gsub!('\\r', EOL)  
       @file_text.gsub!("MSH", "#{EOL}MSH")
       @file_text.squeeze!(EOL)
     end
 
-    # called by initialize
-    # breaks text into groups of 1 header and 1 body
-    # updates @message_text
-    def break_into_messages
-      headers = extract_headers
-      bodies = extract_bodies
-      raise_error_if(headers.size != bodies.size)  
+    # called by format_as_segment_text
+    def remove_non_hl7_lines
+      lines = @file_text.split(EOL)
+      lines.delete_if { |line| line !~ HL7::SEGMENT }  
+      lines  
+    end
     
-      for i in (0...headers.size) do
-        @message_text << headers[i] + bodies[i]
+    # called by initialize
+    def convert_file_text_to_message_text
+      split_file_text_into_headers_and_bodies  
+      pair_each_header_to_body                 
+      rejoin_headers_and_bodies                
+    end    
+  
+    # called by convert_file_text_to_message_text
+    #=> @message_text = [[headers], [bodies]]
+    def split_file_text_into_headers_and_bodies
+      @message_text = [HL7.extract_headers(@file_text), HL7.extract_bodies(@file_text)]
+    end
+    
+    # called by convert_file_text_to_message_text
+    #=> @message_text = [[header1, body1], ..., [headerN, bodyN]]
+    def pair_each_header_to_body
+      begin
+        @message_text.replace(@message_text.transpose) 
+      rescue IndexError
+        raise HL7::BadFileError, "#{@file} contains unequal number of headers and bodies"  
       end
     end
-            
-    # called by initialize
-    # gets the next @max_size messages, as HL7::Message objects
-    # modifies @records
-    def get_records
-      @records = next_set_of_messages.map { |message| Message.new(message) }      
+    
+    # called by convert_file_text_to_message_text
+    #=> @message_text = ["header1+body1", ..., "headerN+bodyN"]
+    def rejoin_headers_and_bodies
+      @message_text.map! { |header, body| header + HL7.separators[:segment] + body }
     end
   
-    # called by get_records      
-    # returns array of strings containing hl7 message of individual records, based on @file_text
-    def next_set_of_messages
-      amount = @max_records ? @max_records : @text_as_messages.size
-      @message_text.shuffle!    # randomize to get the most diversity out of a record set
-      @message_text.shift(amount)
+    # called by do_for_all_messages
+    def get_messages(lines_of_text)
+      lines_of_text.map { |message_text| HL7::Message.new(message_text) }  
     end
-  
-    # called by break_into_segments
-    # gets the first field of each MSH segment, including the field delimiter (|)
-    def extract_headers
-      headers = @file_text.scan(HDR)    # all headers
-      raise HL7::BadFileError, "FileHandler requires a file containing HL7 messages" if headers.empty?
-      headers   
-    end
-
-    # called by break_into_segments
-    # gets the text between each header
-    def extract_bodies
-      bodies = @file_text.split(HDR)    # split across headers, yielding bodies of individual records
-      bodies.shift                      # first "body" is either empty or garbage
-      bodies
-    end
-  
+    
     # raises BadFileError if @file is discovered not to contain HL7-formatted text
     def raise_error_if(condition_met)
       raise HL7::BadFileError, "#{@file} does not contain valid HL7" if condition_met

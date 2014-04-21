@@ -525,4 +525,19 @@ module HL7
     file.each_char{ |char| yield(char) } 
     file.close
   end
+
+    # called by split_file_text_into_headers_and_bodies
+    def self.extract_headers(text)
+      headers = text.scan(HEADER)
+      raise BadFileError, "FileHandler requires a file containing HL7 messages" if headers.empty?
+      headers   
+    end
+
+    # called by split_file_text_into_headers_and_bodies
+    def self.extract_bodies(text)
+      bodies = text.split(HEADER)   # split across headers, yielding bodies of individual records
+      bodies.shift                        # first "body" is either empty or garbage
+      bodies
+    end
+
 end
