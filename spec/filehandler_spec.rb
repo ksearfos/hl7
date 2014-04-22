@@ -1,5 +1,4 @@
-# last run: 4/10
-$:.unshift(File.dirname(__FILE__))
+$:.unshift File.dirname(__FILE__)
 require 'spec_helper'
 
 describe HL7::FileHandler do
@@ -13,12 +12,21 @@ describe HL7::FileHandler do
     @handler = HL7::FileHandler.new(@file)
   end
 
-  it "has a file" do
-    expect(@handler.file).not_to be_empty
+  it "has a file called #{@file}" do
+    expect(@handler.file).to eq(@file)
   end
   
-  it "can access the messages contained in the file" do
-    expect(@handler.respond_to?(:get_messages, true)).to be_true
+  context "when explicitly given a record limit" do
+    it "has a limit of 2" do
+      sized_handler = HL7::FileHandler.new(@file, 2)
+      expect(sized_handler.instance_variable_get(:@limit)).to eq(2)
+    end
+  end
+  
+  context "when not given a record limit" do
+    it "has a limit of 10000" do
+      expect(@handler.instance_variable_get(:@limit)).to eq(10000)
+    end
   end
 
   context "when given a file that doesn't exist" do
@@ -36,16 +44,30 @@ describe HL7::FileHandler do
   end
    
   describe "#do_for_all_messages" do
-    before(:each) do
-      @size = 2
-      @sized_handler = HL7::FileHandler.new(@file, @size)
+    it "creates Message objects from the text in @file" do
+      expect(HL7::Message).to receive(:new).exactly(@handler.size).times
+      @handler.do_for_all_messages{}
     end
     
-    it "executes command for every message" do
-      collection = ""
-      char = "*"
-      @sized_handler.do_for_all_messages{ |_| collection << char }
-      expect(collection).to eq(char * @sized_handler.size)
+    it "iterates over all messages contained in the file" do
+      collection, char = "", '*'
+      @handler.do_for_all_messages{ collection << char }
+      expect(collection).to eq(char * @handler.size)
+    end
+    
+    context "when given a code block" do
+      it "executes the code for each Message object" do
+        expect(HL7::Message).to receive(:new).at_least(:once)
+        result = []
+        @handler.do_for_all_messages { |message| result << message }
+        expect(result.uniq).to eq(result)
+      end
+    end
+    
+    context "when not given a code block" do
+      it "raises an error" do
+        expect { @handler.do_for_all_objects }.to raise_exception
+      end
     end
   end
 

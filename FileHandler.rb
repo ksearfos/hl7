@@ -50,7 +50,8 @@ module HL7
     # PURPOSE:  creates Message objects as needed and iterates through them, performing desired tasks
     # REQUIRES: block [code block] - the code to execute
     # RETURNS:  depends on code block  
-    def do_for_all_messages(&block)     
+    def do_for_all_messages(&block) 
+      raise ArgumentError, "FileHandler#do_for_all_messages expects a code block" unless block_given?    
       @messages_as_text.shuffle!
       @messages_as_text.each_slice(@limit) do |set|
         messages = get_messages(set)
