@@ -49,70 +49,66 @@
 module HL7
    
   class Message  
-    attr_reader :segments, :segments_in_order, :type
+    attr_reader :segments, :type
 
-    # NAME: new
-    # DESC: creates a new HL7::Message object from its original text
-    # ARGS: 1
-    #  message_text [String] - the text of the message
+    # PURPOSE:  creates a new HL7::Message from its original text
+    # REQUIRES: message_text [String] - the text of the message
+    # RETURNS:  new Message
     def initialize(message_text)
       raise_error_if(message_text.empty?)
-      
-      @original_text = message_text.split(HL7.separators[:segment])
-      @segments_in_order = []
-      @segments = {}         # map of segments by type => { :SEG_TYPE => Segment object }
-      @type = :""
-      
-      HL7.extract_separators_from_message(@original_text.first)   # updates HL7::@separators 
-      break_into_segments    # updates @lines, @segments
-      set_message_type       # updates @type
+      @message_text = message_text.split(HL7.separators[:segment])
+            
+      extract_separators    # sets @separators 
+      break_into_segments   # sets @segments_as_text, @segments
+      set_message_type      # sets @type
     end  
 
-    # NAME: to_s
-    # DESC: returns the message as a String object
-    # ARGS: none 
-    # RETURNS:
-    #  [String] the original text of the message   
+    # PURPOSE:  transforms Message into a String
+    # REQUIRES: nothing
+    # RETURNS:  [String] the base text  
     def to_s
-      @original_text * HL7.separators[:segment]
+      @message_text
     end
 
-    # NAME: each_segment
-    # DESC: performs actions for each Segment object
-    # ARGS: 1
-    #  [code block] - the code to execute on each line
-    # RETURNS: depends on the code block
-    # EXAMPLE:
-    #  message.each_segment { |s| print s.class + ' & ' } => MSH & PID & PV1 & ...   
-    def each_segment
+    # PURPOSE:  iterates through each segment, performing given tasks
+    # REQUIRES: [code block] - the code to execute for each segment
+    # RETURNS:  depends on code block   
+    def each
       @segments.each_value{ |segment_obj| yield(segment_obj) }  
     end
 
-    # NAME: method_missing
-    # DESC: handles methods not defined for the class
-    # MATCHES METHODS: Hash#size, Hash#each, Hash#[]
-    #                  calls matched method on @records; otherwise, throws exception
-    # EXAMPLE:
-    #  message.size => 5
-    #  message.balloon => throws NoMethodError    
-    def method_missing( sym, *args, &block )
-      methods_it_responds_to = [:size, :each, :[]]
-      if methods_it_responds_to.include?(sym) then @segments.send(sym, *args)
-      else super
-      end
+    # PURPOSE:  determines the number of different segments in the Message
+    # REQUIRES: nothing
+    # RETURNS:  [Integer] the number of segments
+    # N.B. counts number of different TYPES of segments, NOT the total number of segments/lines
+    def size
+      @segments.size
     end
 
-    # NAME: header
-    # DESC: returns the message header (the MSH segment) as a string
-    # ARGS: none
-    # RETURNS:
-    #  [String] the text of the header
-    # EXAMPLE:
-    #  message.header => "MSH|^~\&|HLAB|RMH|||20140128041144||ORU^R01|201401280411444405|T|2.4" 
+    # PURPOSE:  retrieves all segments of the given type
+    # REQUIRES: [Symbol] the segment type
+    # RETURNS:  [Array] all segments of type    
+    def [](segment_type)
+      @segments[segment_type]
+    end 
+
+    # PURPOSE:  retrieves a segment of the given type
+    # REQUIRES: [Symbol] the segment type
+    # RETURNS:  [Segment] the FIRST segment of that type     
+    def segment(segment_type)
+      @segments[segment_type].first
+    end 
+    
+    # PURPOSE:  retrieves the header segment (also known as the MSH segment)
+    # REQUIRES: nothing
+    # RETURNS:  [Segment] the MSH segment   
     def header
       @segments[:MSH]
     end
 
+    # PURPOSE:  retrieves the message ID
+    # REQUIRES: nothing
+    # RETURNS:  [String] the message control ID, e.g. MSH.9   
     def id
       header.message_control_id
     end
@@ -194,67 +190,42 @@ module HL7
     end
     
     private
-    
+
     # called by initialize
-    # breaks the text into segments by name
-    def break_into_segments    
-      lines = @original_text.map { |text| HL7::SegmentText.new(text) }
-      lines.each do |st_object| 
-        type = st_object.type
-        @segments_in_order << type
-        @segments[type] = HL7::Segment.new(st_object.text)
-      end
-      @segments_in_order.uniq!
+    def extract_separators
+      starting_index = header.index("MSH") + 3   # first character after the MSH
+      @separators = HL7.get_separators(header, starting_index)
     end
-    
-    # called by break_into_segments
-    # identifies all segments found in the text by type
-    # updates @lines
-    # def find_segment_types(all_lines)
-      # all_lines.each { |line| @lines << segment_type(line) }    
-      # @lines.uniq!
-    # end
-
-    # called by break_into_segments
-    # def parse_out_segments_from_text(all_lines)
-      # @lines.each do |segment_type|
-        # segment_text = all_lines_in_segment(segment_type, all_lines) 
-        # add_segment(segment_type, segment_text)  
-      # end
-    # end
-
-    # called by parse_out_segments_from_text
-    # def all_lines_in_segment(segment_type, all_lines)
-      # segment_lines = all_lines.clone
-      # segment_lines.keep_if { |line| line.include?(segment_type.to_s) } 
-      # raise_error_if(segment_lines.empty?)
-      # segment_lines
-    # end
-    
-    # called by parse_out_segments_from_text    
-    # type is a string, body is an array of strings
-    def add_segment(type, lines)
-      @segments[type] = Segment.new(type, *lines)   # initialize segment type, if this is the first time we've encountered it 
-    end
-
-    def set_message_type
-      type = header[2].to_s
-      if type =~ /LAB/ then @type = :lab
-      elsif type =~ /RAD/ then @type = :rad
-      else @type = :enc
-      end
-    end
-    
-    # def segment_type(segment_text)
-      # type = segment_text[HL7::SEGMENT]
-      # raise_error_if(type.nil?)
-      # type.chop.to_sym   # remember, it ends with the field delimiter (|)
-    # end
       
-    def original_text_by_lines
-      @original_text.split(HL7.separators[:segment])
+    # called by initialize
+    def break_into_segments  
+      @segments_as_text = Hash.new([])        
+      @message_text.each { |line| add_segment_text(line) }
+      add_new_segments
     end
     
+    # called by break_into_segments
+    def add_segment_text(text)
+      type = HL7.segment_type(text)
+      @segments_as_text[type] += text
+    end
+    
+    # called by break_into_segments
+    def add_new_segment
+      @segments = @segments_as_text.map { |_,v| Segment.new(v) }
+      segment = Segment.new(text) 
+      @segments[segment.type] += segment
+    end
+
+    # called by initialize
+    def set_message_type
+      @type = case header.sending_application
+        when /LAB$/ then :lab
+        when /RAD$/ then :rad
+        else :enc
+      end
+    end
+     
     # called by details
     # this isn't very elegantly implemented, but, hey, it works
     def detail_for(name)
@@ -272,7 +243,7 @@ module HL7
       else ""
       end
     end
-    
+      
     def raise_error_if(condition)
       raise HL7::InputError, "HL7::Message can only be initialized from valid HL7 text" if condition
     end

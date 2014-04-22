@@ -12,23 +12,26 @@ module HL7
   class NoFileError < HL7::Exception; end
   class BadFileError < HL7::Exception; end
   class InputError < HL7::Exception; end
+  class BadTextError < HL7::Exception; end
   
   class << self; attr_reader :separators; end
   @separators = { segment:"\n", field:"|", component:"^", subcomp:"~", subsubcomp:"\\", sub_subsubcomp:"&" }
   SEPARATOR_OFFSETS = { field: 0, component: 1, subcomp: 2, subsubcomp: 3, sub_subsubcomp: 4 }
-  
-  def self.extract_separators_from_message(header_text)
-    starting_index = header_text.index("MSH") + 3   # first character after the MSH
+
+  def self.get_separators(header_text, starting_index)
+    separators = {}
     SEPARATOR_OFFSETS.each do |name,offset|
       index = starting_index + offset
-      @separators[name] = header_text[index]
+      separators[name] = header_text[index]
     end
+    separators
   end
-  
-  HEADER = /^\d*MSH\|/        # regex defining header row
+      
+  HEADER_REGEX = /^\d*MSH\|/        # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
-  SEGMENT = /[A-Z]{2}[A-Z1]{1}\|/    # regex defining a properly-formatted segment
+  SEGMENT_REGEX = /[A-Z]{2}[A-Z1]{1}\|/    # regex defining a properly-formatted segment
+  SEGMENT_DELIMITER = "\n"
   
   # a list of all possible message types can be found at http://www.interfaceware.com/hl7-standard/hl7-messages.html
   ORDER_MESSAGE_TYPE = "ORU^O01"

@@ -539,12 +539,26 @@ module HL7
       bodies.shift                        # first "body" is either empty or garbage
       bodies
     end
+    
+    # called by split_file_text_into_headers_and_bodies
+    def self.extract_type(text, regex)
+      headers = text.scan(regex)
+      raise BadFileError, "FileHandler requires a file containing HL7 messages" if headers.empty?
+      headers   
+    end
 
+    # called by split_file_text_into_headers_and_bodies
+    def self.extract_segments(text, regex)
+      bodies = text.split(regex)   # split across headers, yielding bodies of individual records
+      bodies.shift                        # first "body" is either empty or garbage
+      bodies
+    end
+    
   def self.header_line?(line)
     line =~ HEADER
   end
   
   def self.segment?(line)
-    line =~ SEGMENT
+    line =~ SEGMENT_REGEX
   end
 end

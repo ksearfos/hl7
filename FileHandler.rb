@@ -1,3 +1,5 @@
+require_relative 'TextSplitter'
+
 =begin -------------------------------------------------------------------
   MODULE: HL7
   CLASS : FileHandler
@@ -11,7 +13,7 @@
             line endings (\r and \r\n) or the Unix style (\n). It also assumes the file is UTF-8 encoded.
   
   CLASS VARIABLES:
-          none; uses HL7.separators[:segment]
+          none; uses HL7::SEGMENT_DELIMITER
   CLASS METHODS:
           none
 
@@ -31,12 +33,11 @@ module HL7
     EOL = "\n"    # the end-of-line character we are using
     attr_reader :file
     
-    # NAME: new
-    # DESC: creates a new HL7::FileHandler object from a text file
-    # ARGS: 1-2
-    #  file [String] - complete path to the source file
-    #  limit [Integer] - highest number of messages to use at one time - 10,000 by default
-    # N.B. I've found that storing more than 10,000 Message objects at once usually causes memory allocation errors 
+    # PURPOSE:  creates a new HL7::FileHandler object from a text file
+    # REQUIRES: file [String] - complete path to the source file
+    # OPTIONAL: limit [Integer] - highest number of messages to process at one time - 10,000 by default
+    # RETURNS:  new FileHandler 
+    # N.B. I've found that processing more than 10,000 Message objects at once generally causes NoMemoryErrors 
     def initialize(file, limit = 10000)
       raise HL7::NoFileError, file unless File.exists?(file)
     
@@ -93,7 +94,7 @@ module HL7
     def format_as_segment_text      
       lines = get_hl7_lines
       raise_error_if(lines.empty?)           
-      @file_text = lines * HL7.separators[:segment]
+      @file_text = lines * HL7::SEGMENT_DELIMITER
     end                                             
   
     # called by read_text_from_file
@@ -110,29 +111,28 @@ module HL7
     
     # called by initialize
     def convert_file_text_to_message_text
-      split_file_text_into_headers_and_bodies  #=> @messages_as_text = [[headers], [bodies]]
-      pair_each_header_to_body                 #=> @messages_as_text = [[header1, body1], ..., [headerN, bodyN]]
-      rejoin_headers_and_bodies                #=> @messages_as_text = ["header1+body1", ..., "headerN+bodyN"]
+      splitter = TextSplitter.new(@file_text, EOL)
+      @messages_as_text = splitter.rejoin(HL7::SEGMENT_DELIMITER)
     end    
-  
-    # called by convert_file_text_to_message_text    
-    def split_file_text_into_headers_and_bodies
-      @messages_as_text = [HL7.extract_headers(@file_text), HL7.extract_bodies(@file_text)]
-    end
-    
-    # called by convert_file_text_to_message_text    
-    def pair_each_header_to_body
-      begin
-        @messages_as_text.replace(@messages_as_text.transpose) 
-      rescue IndexError
-        raise HL7::BadFileError, "#{@file} contains unequal number of headers and bodies"  
-      end
-    end
-    
-    # called by convert_file_text_to_message_text    
-    def rejoin_headers_and_bodies
-      @messages_as_text.map! { |header, body| header + HL7.separators[:segment] + body }
-    end
+#   
+    # # called by convert_file_text_to_message_text    
+    # def split_file_text_into_headers_and_bodies
+      # @messages_as_text = [HL7.extract_headers(@file_text), HL7.extract_bodies(@file_text)]
+    # end
+#     
+    # # called by convert_file_text_to_message_text    
+    # def pair_each_header_to_body
+      # begin
+        # @messages_as_text.replace(@messages_as_text.transpose) 
+      # rescue IndexError
+        # raise HL7::BadFileError, "#{@file} contains unequal number of headers and bodies"  
+      # end
+    # end
+#     
+    # # called by convert_file_text_to_message_text    
+    # def rejoin_headers_and_bodies
+      # @messages_as_text.map! { |header, body| header + HL7::SEGMENT_DELIMITER + body }
+    # end
   
     # called by do_for_all_messages
     def get_messages(lines_of_text)
