@@ -25,7 +25,7 @@ require_relative 'TextSplitter'
           do_for_all_messages(&block): runs the code block for each message, in subsets of size @limit
   
   CREATED BY: Kelli Searfos
-  LAST UPDATED: 4/22 0945
+  LAST UPDATED: 4/22 1144
 =end -------------------------------------------------------------------
 
 module HL7
@@ -114,25 +114,6 @@ module HL7
       splitter = TextSplitter.new(@file_text, EOL)
       @messages_as_text = splitter.rejoin(HL7::SEGMENT_DELIMITER)
     end    
-#   
-    # # called by convert_file_text_to_message_text    
-    # def split_file_text_into_headers_and_bodies
-      # @messages_as_text = [HL7.extract_headers(@file_text), HL7.extract_bodies(@file_text)]
-    # end
-#     
-    # # called by convert_file_text_to_message_text    
-    # def pair_each_header_to_body
-      # begin
-        # @messages_as_text.replace(@messages_as_text.transpose) 
-      # rescue IndexError
-        # raise HL7::BadFileError, "#{@file} contains unequal number of headers and bodies"  
-      # end
-    # end
-#     
-    # # called by convert_file_text_to_message_text    
-    # def rejoin_headers_and_bodies
-      # @messages_as_text.map! { |header, body| header + HL7::SEGMENT_DELIMITER + body }
-    # end
   
     # called by do_for_all_messages
     def get_messages(lines_of_text)

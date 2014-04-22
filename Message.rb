@@ -59,7 +59,7 @@ module HL7
       @message_text = message_text.split(HL7.separators[:segment])
             
       extract_separators    # sets @separators 
-      break_into_segments   # sets @segments_as_text, @segments
+      break_into_segments   # sets @segment_units, @segments
       set_message_type      # sets @type
     end  
 
@@ -89,14 +89,8 @@ module HL7
     # REQUIRES: [Symbol] the segment type
     # RETURNS:  [Array] all segments of type    
     def [](segment_type)
-      @segments[segment_type]
-    end 
-
-    # PURPOSE:  retrieves a segment of the given type
-    # REQUIRES: [Symbol] the segment type
-    # RETURNS:  [Segment] the FIRST segment of that type     
-    def segment(segment_type)
-      @segments[segment_type].first
+      type = segment_type.upcase.to_sym
+      @segments[type]
     end 
     
     # PURPOSE:  retrieves the header segment (also known as the MSH segment)
@@ -113,80 +107,54 @@ module HL7
       header.message_control_id
     end
         
-    # NAME: details
-    # DESC: compiles crucial information about the message, clearly labelled
-    # ARGS: 0+
-    #  all [Symbol] - the keys of the details to return - will return all of them by default
-    #            ==>  options are: :ID, :TYPE, :DATE, :PT_NAME, :PT_ACCT, :PROC_NAME, :PROC_DATE, :VISIT
-    # RETURNS:
-    #  [Hash] the requested details (all of them by default)
-    # EXAMPLE:
-    #  message.details(:ID, PT_NAME) => { :ID=>"1234563", :PT_NAME=>"John Smith" } 
-    def details(*all)
-      info_types = all.empty? ? %w(id type date pt_name pt_acct dob proc_name proc_date visit) : all
-      all_details = {}
-      info_types.each do |info_type|
-        key = info_type.upcase.to_sym     # turn "id" into :ID, for example
-        all_details[key] = detail_for(key)
-      end
-      
-      all_details
+    # # NAME: details
+    # # DESC: compiles crucial information about the message, clearly labelled
+    # # ARGS: 0+
+    # #  all [Symbol] - the keys of the details to return - will return all of them by default
+    # #            ==>  options are: :ID, :TYPE, :DATE, :PT_NAME, :PT_ACCT, :PROC_NAME, :PROC_DATE, :VISIT
+    # # RETURNS:
+    # #  [Hash] the requested details (all of them by default)
+    # # EXAMPLE:
+    # #  message.details(:ID, PT_NAME) => { :ID=>"1234563", :PT_NAME=>"John Smith" } 
+    # def details(*all)
+      # info_types = all.empty? ? %w(id type date pt_name pt_acct dob proc_name proc_date visit) : all
+      # all_details = {}
+      # info_types.each do |info_type|
+        # key = info_type.upcase.to_sym     # turn "id" into :ID, for example
+        # all_details[key] = detail_for(key)
+      # end
+#       
+      # all_details
+    # end
+ 
+    # PURPOSE:  displays readable version of the segments, headed by the type of the segment
+    # REQUIRES: nothing
+    # RETURNS:  [String] the text of each segment, labelled and in order
+    # EXAMPLE OUTPUT:
+    #   MSH: ^~\&|sys|org|||201401281346
+    #   PID: abc|123456||SMITH^JOHN^^IV|||19840106
+    #   PV1: |O|^^||||12345^Doe^Doug^E^^Dr|12345^Doe^Doug^E^^Dr
+    #   OBX: 1|TX|||I like chocolate this much:
+    #   OBX: 2|TX|||<-------------------------->                        
+    def view
+      @segments.each_value { |segment_object| segment_object.show }
     end
 
-    # NAME: view_segments
-    # DESC: displays readable version of the segments, headed by the type of the segment
-    # ARGS: none
-    # RETURNS: nothing; writes to stdout
-    # EXAMPLE:
-    #  message.view_segments => MSH: ^~\&|sys|org|||201401281346
-    #                           PID: abc|123456||SMITH^JOHN^^IV|||19840106
-    #                           PV1: |O|^^||||12345^Doe^Doug^E^^Dr|12345^Doe^Doug^E^^Dr
-    #                           OBX: 1|TX|||I like chocolate this much:
-    #                           OBX: 2|TX|||<-------------------------->                        
-    def view_segments
-      @segments.values.flatten.each { |object| object.show }
+    # PURPOSE:  returns values in the given field for each line of the segment
+    # REQUIRES: [String] - the 3-letter segment type followed by the field's index, e.g. "pid5"
+    # RETURNS:  [Array] the values of the fields for each line of the segment
+    def all_fields(field_descriptor)
+      HL7.parse_field_descriptor(field_descriptor)
+      get_fields
     end
 
-    # NAME: fetch_field
-    # DESC: returns array of field values at given index of given segment (for all lines)
-    # ARGS: 1
-    #  field [String] - the 3-letter segment type followed by the index of the field, e.g. "pid5"
-    # RETURNS:
-    #  [Array] the values of the fields for each line of the segment
-    #      ==> this was created for easy handling of segments that have more than one occurrence in a message
-    # EXAMPLE:
-    #  1-line segment: message.fetch_field("pid1") => [ "12345" ]
-    #  2-line segment: message.fetch_field("obx2") => [ "20131223", "20131211" ]
-    def fetch_field( field )
-      segment_name = field[/\w{3}/]
-      segment = @segments[segment_name.upcase.to_sym]    # segment expected to be an uppercase symbol
-      segment ? segment.all_fields( f.to_i ) : []
-    end
-
-    # NAME: segment_before
-    # DESC: identifies type of segment occurring in the message directly before (all lines of) the specified type
-    # ARGS: 1
-    #  segment [Symbol] - the name of the segment whose predecessor we seek
-    # RETURNS:
-    #  [Symbol] the name of the preceeding segment
-    # EXAMPLE:
-    #  message.segment_before(:PID) => :MSH  
-    def segment_before(segment)
-      i = @segments_in_order.index(segment)
-      @segments_in_order[i-1]
-    end
-
-    # NAME: segment_after
-    # DESC: identifies type of segment occurring in the message directly after (all lines of) the specified type
-    # ARGS: 1
-    #  segment [Symbol] - the name of the segment whose successor we seek
-    # RETURNS:
-    #  [Symbol] the name of the successive segment
-    # EXAMPLE:
-    #  message.segment_after(:PID) => :PV1    
-    def segment_after(segment)
-      i = @segments_in_order.index(segment)
-      @segments_in_order[i+1]
+    # PURPOSE:  verifies that the HL7 segments occur in the desired order
+    # REQUIRES: [Symbol/String] - the segment type expected to occur first
+    #           [Symbol/String] - the segment type expect to occur after the other
+    # RETURNS:  true if first_segment precedes later_segment, false otherwise
+    def verify_segment_order(first_segment, later_segment)
+      segments = segment_types
+      segments.index(first_segment) < segments.index(later_segment)
     end
     
     private
@@ -199,22 +167,19 @@ module HL7
       
     # called by initialize
     def break_into_segments  
-      @segments_as_text = Hash.new([])        
-      @message_text.each { |line| add_segment_text(line) }
-      add_new_segments
+      @segment_units = TextSplitter.new(@message_text, HL7::SEGMENT_REGEX)
+      segment_types.each { |type| add_new_segment(type) } 
+    end
+    
+    # called by break_into_segments, segment_before
+    def segment_types
+      @segment_units.heads.uniq
     end
     
     # called by break_into_segments
-    def add_segment_text(text)
-      type = HL7.segment_type(text)
-      @segments_as_text[type] += text
-    end
-    
-    # called by break_into_segments
-    def add_new_segment
-      @segments = @segments_as_text.map { |_,v| Segment.new(v) }
-      segment = Segment.new(text) 
-      @segments[segment.type] += segment
+    def add_new_segment(type)
+      head_body_array = @segment_units.pairs.select { |head, _| head == type }
+      @segments[type] << Segment.new(head_body_array, @separators.clone)
     end
 
     # called by initialize
@@ -226,24 +191,31 @@ module HL7
       end
     end
      
-    # called by details
-    # this isn't very elegantly implemented, but, hey, it works
-    def detail_for(name)
-      case name
-      when :ID then @id
-      when :TYPE then @type.to_s.capitalize
-      when :DATE then header.field(:date_time).as_datetime
-      when :PT_NAME then @segments[:PID].field(:patient_name).as_name
-      when :PT_ID then @segments[:PID].field(:mrn).first
-      when :PT_ACCT then @segments[:PID].field(:account_number).first
-      when :DOB then @segments[:PID].field(:dob).as_date
-      when :PROC_NAME then @segments[:OBR].procedure_id
-      when :PROC_DATE then @segments[:OBR].field(7).as_datetime
-      when :VISIT_DATE then @segments[:PV1].field(:admit_date_time).as_datetime
-      else ""
-      end
-    end
-      
+    # # called by details
+    # # this isn't very elegantly implemented, but, hey, it works
+    # def detail_for(name)
+      # case name
+      # when :ID then @id
+      # when :TYPE then @type.to_s.capitalize
+      # when :DATE then header.field(:date_time).as_datetime
+      # when :PT_NAME then @segments[:PID].field(:patient_name).as_name
+      # when :PT_ID then @segments[:PID].field(:mrn).first
+      # when :PT_ACCT then @segments[:PID].field(:account_number).first
+      # when :DOB then @segments[:PID].field(:dob).as_date
+      # when :PROC_NAME then @segments[:OBR].procedure_id
+      # when :PROC_DATE then @segments[:OBR].field(7).as_datetime
+      # when :VISIT_DATE then @segments[:PV1].field(:admit_date_time).as_datetime
+      # else ""
+      # end
+    # end
+ 
+    # called by all_fields
+    def get_fields
+      type, field = $1, $2.to_i
+      segment = @segments[type]
+      segment ? segment.all_fields(field) : []
+    end     
+    
     def raise_error_if(condition)
       raise HL7::InputError, "HL7::Message can only be initialized from valid HL7 text" if condition
     end

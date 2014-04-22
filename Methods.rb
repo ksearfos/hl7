@@ -525,34 +525,6 @@ module HL7
     file.each_char{ |char| yield(char) } 
     file.close
   end
-
-    # called by split_file_text_into_headers_and_bodies
-    def self.extract_headers(text)
-      headers = text.scan(HEADER)
-      raise BadFileError, "FileHandler requires a file containing HL7 messages" if headers.empty?
-      headers   
-    end
-
-    # called by split_file_text_into_headers_and_bodies
-    def self.extract_bodies(text)
-      bodies = text.split(HEADER)   # split across headers, yielding bodies of individual records
-      bodies.shift                        # first "body" is either empty or garbage
-      bodies
-    end
-    
-    # called by split_file_text_into_headers_and_bodies
-    def self.extract_type(text, regex)
-      headers = text.scan(regex)
-      raise BadFileError, "FileHandler requires a file containing HL7 messages" if headers.empty?
-      headers   
-    end
-
-    # called by split_file_text_into_headers_and_bodies
-    def self.extract_segments(text, regex)
-      bodies = text.split(regex)   # split across headers, yielding bodies of individual records
-      bodies.shift                        # first "body" is either empty or garbage
-      bodies
-    end
     
   def self.header_line?(line)
     line =~ HEADER
@@ -560,5 +532,12 @@ module HL7
   
   def self.segment?(line)
     line =~ SEGMENT_REGEX
+  end
+  
+  # after this is run:
+  # $1 = first three characters in descriptor; the segment type (as a String)
+  # $2 = remaining digits in descriptor; the field index (as a String)
+  def self.parse_field_descriptor(descriptor)
+    descriptor =~ /(\w{3})(\d+)/
   end
 end
