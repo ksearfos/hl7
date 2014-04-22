@@ -540,4 +540,11 @@ module HL7
       bodies
     end
 
+  def self.header_line?(line)
+    line =~ HEADER
+  end
+  
+  def self.segment?(line)
+    line =~ SEGMENT
+  end
 end

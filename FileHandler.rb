@@ -83,21 +83,7 @@ module HL7
     def to_s
       @file_text
     end
-
-    # NAME: method_missing
-    # DESC: handles methods not defined for the class
-    # MATCHES METHODS: Array#first, Array#last, Array#size, Array#each, Array#[]
-    #                  calls matched method on @messages; otherwise, throws exception
-    # EXAMPLE:
-    #  message_handler.size => 3
-    #  message_handler.balloon => throws NoMethodError    
-    def method_missing(sym, *args, &block)
-      methods_it_responds_to = [:first, :last, :size, :[], :each]
-      if methods_it_responds_to.include?(sym) then @messages.send(sym, *args)
-      else super
-      end
-    end
-  
+ 
     private  
   
     # called by initialize
@@ -119,9 +105,8 @@ module HL7
 
     # called by read_text_from_file
     def format_as_segment_text      
-      lines = remove_non_hl7_lines
-      raise_error_if(lines.empty?)
-           
+      lines = get_hl7_lines
+      raise_error_if(lines.empty?)           
       @file_text = lines * HL7.separators[:segment]
     end                                             
   
@@ -129,14 +114,12 @@ module HL7
     def standardize_endline_character
       @file_text.gsub!('\\r', EOL)  
       @file_text.gsub!("MSH", "#{EOL}MSH")
-      @file_text.squeeze!(EOL)
     end
 
     # called by format_as_segment_text
-    def remove_non_hl7_lines
+    def get_hl7_lines
       lines = @file_text.split(EOL)
-      lines.delete_if { |line| line !~ HL7::SEGMENT }  
-      lines  
+      lines.keep_if { |line| HL7.segment?(line) }  
     end
     
     # called by initialize

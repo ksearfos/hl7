@@ -55,16 +55,6 @@ ensure
   $stdout = old
 end
 
-class TestFileHandler < HL7::FileHandler
-  def initialize(file, count = 10000)
-    super(file, count)
-  end
-  
-  def get_records
-    @records = next_set_of_messages
-  end  
-end
-
 class TestMessage < HL7::Message
   def initialize(message_text)
     super
