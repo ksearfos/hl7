@@ -1,3 +1,6 @@
+$:.unshift File.dirname(__FILE__)
+require 'SplitText'
+
 #------------------------------------------
 #
 # MODULE: HL7
@@ -56,8 +59,7 @@ module HL7
     # RETURNS:  new Message
     def initialize(message_text)
       raise_error_if(message_text.empty?)
-      @message_text = message_text.split(HL7.separators[:segment])
-            
+      @message_text = message_text            
       extract_separators    # sets @separators 
       break_into_segments   # sets @segment_units, @segments
       set_message_type      # sets @type
@@ -106,27 +108,7 @@ module HL7
     def id
       header.message_control_id
     end
-        
-    # # NAME: details
-    # # DESC: compiles crucial information about the message, clearly labelled
-    # # ARGS: 0+
-    # #  all [Symbol] - the keys of the details to return - will return all of them by default
-    # #            ==>  options are: :ID, :TYPE, :DATE, :PT_NAME, :PT_ACCT, :PROC_NAME, :PROC_DATE, :VISIT
-    # # RETURNS:
-    # #  [Hash] the requested details (all of them by default)
-    # # EXAMPLE:
-    # #  message.details(:ID, PT_NAME) => { :ID=>"1234563", :PT_NAME=>"John Smith" } 
-    # def details(*all)
-      # info_types = all.empty? ? %w(id type date pt_name pt_acct dob proc_name proc_date visit) : all
-      # all_details = {}
-      # info_types.each do |info_type|
-        # key = info_type.upcase.to_sym     # turn "id" into :ID, for example
-        # all_details[key] = detail_for(key)
-      # end
-#       
-      # all_details
-    # end
- 
+    
     # PURPOSE:  displays readable version of the segments, headed by the type of the segment
     # REQUIRES: nothing
     # RETURNS:  [String] the text of each segment, labelled and in order
@@ -136,7 +118,7 @@ module HL7
     #   PV1: |O|^^||||12345^Doe^Doug^E^^Dr|12345^Doe^Doug^E^^Dr
     #   OBX: 1|TX|||I like chocolate this much:
     #   OBX: 2|TX|||<-------------------------->                        
-    def view
+    def view_segments
       @segments.each_value { |segment_object| segment_object.show }
     end
 
@@ -161,25 +143,32 @@ module HL7
 
     # called by initialize
     def extract_separators
-      starting_index = header.index("MSH") + 3   # first character after the MSH
-      @separators = HL7.get_separators(header, starting_index)
+      starting_index = @message_text.index("MSH") + 3   # first character after the MSH
+      @separators = HL7.get_separators(@message_text, starting_index)
     end
       
     # called by initialize
-    def break_into_segments  
-      @segment_units = TextSplitter.new(@message_text, HL7::SEGMENT_REGEX)
+    def break_into_segments
+      @segment_units = []     
+      @segments = {}   
+      split_by_segment
       segment_types.each { |type| add_new_segment(type) } 
+    end
+    
+    def split_by_segment
+      split_text = SplitText.new(@message_text, HL7::SEGMENT_REGEX)
+      split_text.value.each_slice(2) { |pair| @segment_units << pair }
     end
     
     # called by break_into_segments, segment_before
     def segment_types
-      @segment_units.heads.uniq
+      @segment_units.transpose[0].uniq
     end
     
     # called by break_into_segments
     def add_new_segment(type)
-      head_body_array = @segment_units.pairs.select { |head, _| head == type }
-      @segments[type] << Segment.new(head_body_array, @separators.clone)
+      segments = @segment_units.select { |segment_type, text| segment_type == type }
+      @segments[type] = Segment.new(segments, @separators.clone)
     end
 
     # called by initialize
@@ -190,25 +179,7 @@ module HL7
         else :enc
       end
     end
-     
-    # # called by details
-    # # this isn't very elegantly implemented, but, hey, it works
-    # def detail_for(name)
-      # case name
-      # when :ID then @id
-      # when :TYPE then @type.to_s.capitalize
-      # when :DATE then header.field(:date_time).as_datetime
-      # when :PT_NAME then @segments[:PID].field(:patient_name).as_name
-      # when :PT_ID then @segments[:PID].field(:mrn).first
-      # when :PT_ACCT then @segments[:PID].field(:account_number).first
-      # when :DOB then @segments[:PID].field(:dob).as_date
-      # when :PROC_NAME then @segments[:OBR].procedure_id
-      # when :PROC_DATE then @segments[:OBR].field(7).as_datetime
-      # when :VISIT_DATE then @segments[:PV1].field(:admit_date_time).as_datetime
-      # else ""
-      # end
-    # end
- 
+
     # called by all_fields
     def get_fields
       type, field = $1, $2.to_i

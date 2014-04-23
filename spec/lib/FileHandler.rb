@@ -112,7 +112,7 @@ module HL7
     
     # called by initialize
     def convert_file_text_to_message_text
-      split_text = SplitText.new(@file_text, /(#{HL7::HEADER_REGEX})/)
+      split_text = SplitText.new(@file_text, HL7::HEADER_REGEX)
       @messages_as_text = []
       split_text.value.each_slice(2) { |head, body| @messages_as_text << head + body }
     end    

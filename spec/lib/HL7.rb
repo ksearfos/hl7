@@ -1,8 +1,9 @@
 $:.unshift File.dirname(__FILE__)
 require 'Methods'
+require 'Constants'
 require 'FileHandler'
 require 'Message'
-# require 'Segment'
+require 'Segment'
 # require 'TypedSegment'
 # require 'Field'
 

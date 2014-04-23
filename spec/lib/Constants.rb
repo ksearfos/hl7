@@ -1,9 +1,9 @@
 module HL7
       
-  HEADER_REGEX = /^\d*MSH\|/              # regex defining header row
-  SEGMENT_REGEX = /^[A-Z]{2}[A-Z1]{1}\|/  # regex defining a properly-formatted segment
+  HEADER_REGEX = /^\d*(MSH)\|/              # regex defining header row, matching 'MSH'
+  SEGMENT_REGEX = /^([A-Z]{2}[A-Z1]{1})\|/  # regex defining a segment row, matching first three characters
   SEGMENT_DELIMITER = "\n"
-  ID_FORMAT_REGEX = /^[A-Z]?d+$/          # regex defining an ID in the system
+  ID_FORMAT_REGEX = /^[A-Z]?d+$/            # regex defining an ID in the system
   
   # a list of all possible message types can be found at http://www.interfaceware.com/hl7-standard/hl7-messages.html
   ORDER_MESSAGE_TYPE = "ORU^O01"
