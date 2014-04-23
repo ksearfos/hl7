@@ -2,7 +2,6 @@ $LOAD_PATH.unshift File.expand_path("../..",__FILE__)
 
 require 'rspec'
 require 'HL7'
-require 'TextSplitter'
 require 'shared_examples'
 require 'stringio'
 

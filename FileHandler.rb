@@ -1,4 +1,4 @@
-require_relative 'TextSplitter'
+require_relative 'SplitText'
 
 =begin -------------------------------------------------------------------
   MODULE: HL7

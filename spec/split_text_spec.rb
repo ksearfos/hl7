@@ -1,24 +1,19 @@
 $LOAD_PATH.unshift File.dirname(__FILE__)
 require 'spec_helper'
 
-describe TextSplitter do
+describe SplitText do
   it "requires text" do
-    expect { TextSplitter.new(/nontext/, //) }.to raise_exception  
+    expect { SplitText.new(/nontext/, //) }.to raise_exception  
   end
   
   it "requires a regexp to split across" do
-    expect { TextSplitter.new("text", "some string") }.to raise_exception
+    expect { SplitText.new("text", "some string") }.to raise_exception
   end
   
-  it "has text equal to the text provided" do
-    text = 'SOME TEXT'
-    expect(TextSplitter.new(text, /\w/).text).to eq(text)
-  end
-  
-  it "has text that's been split across the regexp" do
+  it "has a value equal to the text split across the regexp" do
     text = 'My text made of words'
     regex = /\s/
-    expect(TextSplitter.new(text, regex).split_text).to eq(%w[My text made of words])
+    expect(SplitText.new(text, regex).value).to eq(%w[My text made of words])
   end
   
   context "when given a pattern with a match group" do  
@@ -30,7 +25,7 @@ describe TextSplitter do
 EOS
       regex = /^(\d)\. /    # one digit, as the match, followed by a period and a space
       text_minus_dot_space = ["1", "Line 1\n", "2", "Line 2\n", "3", "Line 3\n"]    
-      expect(TextSplitter.new(text, regex).split_text).to eq(text_minus_dot_space)
+      expect(SplitText.new(text, regex).value).to eq(text_minus_dot_space)
     end
   end
   
@@ -38,7 +33,7 @@ EOS
     let(:delimiter) { '*' }
     let(:text) { "My text made of words" }
     let(:rejoined_text) { "My*text*made*of*words" }
-    let(:splitter) { TextSplitter.new(text, /\s/) }
+    let(:splitter) { SplitText.new(text, /\s/) }
 
     it "rejoins split text with a given delimiter" do
       expect(splitter.rejoin(delimiter)).to eq(rejoined_text)
