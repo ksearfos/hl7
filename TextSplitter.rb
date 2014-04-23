@@ -1,29 +1,27 @@
-module HL7
   class TextSplitter
-    attr_reader :heads, :bodies, :pairs
+    attr_reader :split_text, :text
+    SPLIT_INDICATOR = '<SPLIT>'
     
     def initialize(core_text, regex)
+      raise "TextSplitter requires a String" unless core_text.is_a? String
+      raise "TextSplitter requires a Regexp" unless regex.is_a? Regexp 
       @text = core_text
-      split(regex)    # sets @heads, @bodies
-      @pairs = [@heads, @bodies].transpose   #=> [ [h1,b1], [h2,b2], ... ]
+      split(regex)    # sets @text_by_unit
     end
-       
+    
     def rejoin(delimiter)
-      @pairs.map { |head_body| head_body * delimiter }
+      @split_text * delimiter  
     end
     
     def size
-      @heads.size   # @bodies.size is the same size, of course
+      @text_by_unit.size
     end
     
     private
     
-    def split(pattern)
-      @heads = @text.scan(pattern)
-      @bodies = @text.split(pattern)
-      @bodies.shift    # due to the way split works, @bodies.first is either empty or garbage  
-      raise HL7::BadTextError "Unequal number of heads and bodies" if @heads.size != @bodies.size
+    def split(pattern)     
+      marked_text = @text.gsub(pattern, SPLIT_INDICATOR+'\1'+SPLIT_INDICATOR)
+      @split_text = marked_text.split(SPLIT_INDICATOR)
+      @split_text.reject!(&:empty?)
     end
   end  
-
-end
