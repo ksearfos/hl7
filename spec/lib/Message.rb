@@ -60,7 +60,7 @@ module HL7
     def initialize(message_text)
       raise_error_if(message_text.empty?)
       @message_text = message_text            
-      extract_separators    # sets @separators 
+      extract_separators    # sets @separators
       break_into_segments   # sets @segment_units, @segments
       set_message_type      # sets @type
     end  
@@ -126,8 +126,9 @@ module HL7
     # REQUIRES: [String] - the 3-letter segment type followed by the field's index, e.g. "pid5"
     # RETURNS:  [Array] the values of the fields for each line of the segment
     def all_fields(field_descriptor)
-      HL7.parse_field_descriptor(field_descriptor)
-      get_fields
+      type, field = HL7.parse_field_descriptor(field_descriptor)
+      segment = @segments[type.upcase.to_sym]
+      segment ? segment.all_fields(field) : []
     end
 
     # PURPOSE:  verifies that the HL7 segments occur in the desired order
@@ -136,7 +137,7 @@ module HL7
     # RETURNS:  true if first_segment precedes later_segment, false otherwise
     def verify_segment_order(first_segment, later_segment)
       segments = segment_types
-      segments.index(first_segment) < segments.index(later_segment)
+      segments.index(first_segment.to_s) < segments.index(later_segment.to_s)
     end
     
     private
@@ -156,7 +157,7 @@ module HL7
     end
     
     def split_by_segment
-      split_text = SplitText.new(@message_text, HL7::SEGMENT_REGEX)
+      split_text = SplitText.new(@message_text.clone, HL7::SEGMENT_REGEX)
       split_text.value.each_slice(2) { |pair| @segment_units << pair }
     end
     
@@ -168,7 +169,7 @@ module HL7
     # called by break_into_segments
     def add_new_segment(type)
       segments = @segment_units.select { |segment_type, text| segment_type == type }
-      @segments[type] = Segment.new(segments, @separators.clone)
+      @segments[type.to_sym] = Segment.new(segments, @separators.clone)
     end
 
     # called by initialize
@@ -178,14 +179,7 @@ module HL7
         when /RAD$/ then :rad
         else :enc
       end
-    end
-
-    # called by all_fields
-    def get_fields
-      type, field = $1, $2.to_i
-      segment = @segments[type]
-      segment ? segment.all_fields(field) : []
-    end     
+    end  
     
     def raise_error_if(condition)
       raise HL7::InputError, "HL7::Message can only be initialized from valid HL7 text" if condition

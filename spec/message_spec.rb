@@ -3,26 +3,23 @@ require 'spec_helper'
 
 describe HL7::Message do
   before(:all) do
-    @text = <<END_TEXT
-MSH|^~\&|HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4
+    @text = 'MSH|^~\&||HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4
 PID|||00487630^^^ST01||Thompson^Richard^L||19641230|M|||^^^^^^^|||||||A2057219^^^^STARACC|291668118
 PV1||Null value detected|||||20535^Watson^David^D^^^MD^^^^^^STARPROV|||||||||||12|A2057219^^^^STARACC|||||||||||||||||
 ORC|RE
 OBR|||4A  A61302526|4ATRPOC^^OHHOREAP|||201110131555|||||||||A00384^Watson^David^D^^^MD^^STARPROV||||||201110131555|||F
 OBX|1|TX|APRESULT^.^LA01|2|  REPORT||||||F
 OBX|2|TX|APRESULT^.^LA01|3|  Name: GILLISPIE, MARODA          GGC-11-072157||||||F
-NTE|1||Testing performed by Grady Memorial Hospital, 561 West Central Ave., Delaware, Ohio, 43015, UNLESS otherwise noted.
-END_TEXT
+NTE|1||Testing performed by Grady Memorial Hospital, 561 West Central Ave., Delaware, Ohio, 43015, UNLESS otherwise noted.'
   end 
   
   before(:each) do
-    HL7::Segment.stub(:new) { |array| array[0][0] }   # should be the segment type
-    HL7::Segment.stub(:sending_application) { 'HLAB' }
+    HL7::Segment.stub(:new) { |array| TestSegment.new(array) }
     @message = HL7::Message.new(@text)
   end
   
-  it "has a list of segments by name" do
-    expect(@message.segments.values).to eq(%w[MSH PID PV1 ORC OBR OBX NTE])
+  it "has a list of segments by type" do
+    expect(@message.segments.keys).to eq([:MSH, :PID, :PV1, :ORC, :OBR, :OBX, :NTE])
   end
   
   it "has a message type of lab" do
@@ -36,18 +33,18 @@ END_TEXT
   end
   
   describe "#[]" do
-    it "allows access to its segments" do
-      expect(@message[:PID]).to be_a HL7::Segment
+    it "allows access to the segments" do
+      expect(@message[:PID]).to be_a TestSegment
     end
     
     it "retrieves the segment of the given type" do
-      expect(@message[:PID]).to eq('PID')    
+      expect(@message[:PID].type).to eq('PID')    
     end
   end
   
   describe "#header" do
     it "returns the header segment" do
-      expect(@message.header).to eq(message[:MSH])
+      expect(@message.header).to eq(@message[:MSH])
     end
   end
   
@@ -60,14 +57,13 @@ END_TEXT
   describe "#each" do
     it "performs a task for each segment" do
       segments = []
-      @message.each { |segment| segments << "#{segment}!" }
-      expect(segments).to eq(%[MSH! PID! PV1! ORC! OBR! OBX! NTE!])
+      @message.each { |segment| segments << "#{segment.type}!" }
+      expect(segments).to eq(%w[MSH! PID! PV1! ORC! OBR! OBX! NTE!])
     end
   end
   
   describe "#view_segments" do
-    it "displays the segments, neatly formatted" do
-      HL7::Segment.stub(:show) { "peek-a-boo!" }      
+    it "displays the segments, neatly formatted" do     
       printed = capture_stdout { @message.view_segments }
       expect(printed).not_to be_empty
     end
@@ -79,30 +75,30 @@ END_TEXT
     end
     
     it "gets the field value for each line of the segment" do
-      expect(@message.all_fields("obx1").size).to eq(["1", "2"])
+      expect(@message.all_fields("obx1").size).to eq(2)
     end
     
     it "correctly identifies the segment and field based on the given text" do
-      expect(@message.all_fields("nte3")).to eq(message[:NTE][3])
+      expect(@message.all_fields("nte3")).to eq(@message[:NTE].field(3))
     end
   end
   
   describe "#verify_segment_order" do
     context "when the first segment type occurs before the second type" do
       it "is true" do
-        expect(@message.verify_segment_order("pid", "obr")).to be_true
+        expect(@message.verify_segment_order(:PID, :OBR)).to be_true
       end    
     end
     
     context "when the first segment type occurs after the second type" do
       it "is false" do
-        expect(@message.verify_segment_order("obx", "msh")).to be_false
+        expect(@message.verify_segment_order(:OBX, :MSH)).to be_false
       end    
     end
     
     context "when given the same segment" do
       it "is false" do
-        expect(@message.verify_segment_order("obx", "obx")).to be_false
+        expect(@message.verify_segment_order(:OBX, :OBX)).to be_false
       end    
     end
   end

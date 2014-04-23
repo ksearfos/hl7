@@ -55,34 +55,37 @@ ensure
   $stdout = old
 end
 
-class TestMessage < HL7::Message
-  def initialize(message_text)
-    super
+class TestSegment
+  attr_reader :type
+  
+  def initialize(array)
+    @type = array[0][0]
+    @lines = array.transpose[1]
   end  
 
-  def details(*all)
-    info_types = all.empty? ? %w(id type date pt_name pt_acct dob proc_name proc_date visit) : all
-    all_details = {}
-    info_types.each do |info_type|
-      key = info_type.upcase.to_sym     # turn "id" into :ID, for example
-      all_details[key] = key
-    end
-      
-    all_details
-  end
-    
-  def add_segment(type, lines)
-    @segments[type] = lines 
+  def sending_application
+    fields[2]
   end
   
-  def break_into_segments    
-    @segments_in_order = [:MSH, :PID, :PV1, :ORC, :OBR, :OBX, :NTE]
-    @segments[:MSH] = "012345MSH|^~\&|HLAB|GMH|||20140128041143||ORU^R01|20140128041143833|T|2.4"
-    @segments[:PID] = "PID|||00487630^^^ST01||Thompson^Richard^L||19641230|M|||^^^^^^^|||||||A2057219^^^^STARACC|291668118"
-    @segments[:PV1] = "PV1||Null value detected|||||20535^Watson^David^D^^^MD^^^^^^STARPROV||"
-    @segments[:ORC] = "ORC|RE"
-    @segments[:OBR] = "OBR|||4A  A61302526|4ATRPOC^^OHHOREAP|||201110131555||||"
-    @segments[:OBX] = ["OBX|1|TX|APRESULT^.^LA01|2|  REPORT||||||F"]
-    @segments[:OBX] << "OBX|2|TX|APRESULT^.^LA01|3|  Name: GILLISPIE, MARODA          GGC-11-072157||||||F"
+  def message_control_id
+    fields[9]
+  end
+  
+  def field(index)
+    ["#{@type}#{index}"]
+  end
+  
+  def all_fields(index)
+    field(index) * @lines.size
+  end
+  
+  def show
+    puts @type
+  end
+
+  private
+  
+  def fields
+    @lines.first.split('|')
   end
 end

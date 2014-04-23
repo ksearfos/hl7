@@ -538,6 +538,7 @@ module HL7
   # $1 = first three characters in descriptor; the segment type (as a String)
   # $2 = remaining digits in descriptor; the field index (as a String)
   def self.parse_field_descriptor(descriptor)
-    descriptor =~ /(\w{3})(\d+)/
+    /(\w{3})(\d+)/.match descriptor
+    [$1, $2]
   end
 end
