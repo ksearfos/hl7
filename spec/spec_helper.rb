@@ -1,8 +1,8 @@
-$LOAD_PATH.unshift File.expand_path("../..",__FILE__)
+$LOAD_PATH.unshift File.expand_path("../../lib",__FILE__)
 
-require 'rspec'
 require 'HL7'
 require 'shared_examples'
+require 'rspec'
 require 'stringio'
 
 # data of various types
