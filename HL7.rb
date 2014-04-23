@@ -30,7 +30,7 @@ module HL7
   HEADER_REGEX = /^(\d*MSH)\|/        # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
-  SEGMENT_REGEX = /^[A-Z]{2}[A-Z1]{1}/    # regex defining a properly-formatted segment
+  SEGMENT_REGEX = /^[A-Z]{2}[A-Z1]{1}\|/    # regex defining a properly-formatted segment
   SEGMENT_DELIMITER = "\n"
   
   # a list of all possible message types can be found at http://www.interfaceware.com/hl7-standard/hl7-messages.html

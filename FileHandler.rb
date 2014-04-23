@@ -113,10 +113,8 @@ module HL7
     # called by initialize
     def convert_file_text_to_message_text
       split_ready_text = @file_text.gsub(HL7::HEADER_REGEX, '>>>\1')
-      puts split_ready_text
       @messages_as_text = split_ready_text.split('>>>')
-      
-      # @messages_as_text = splitter.rejoin(HL7::SEGMENT_DELIMITER)
+      @messages_as_text.shift
     end    
   
     # called by do_for_all_messages
