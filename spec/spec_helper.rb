@@ -89,3 +89,26 @@ class TestSegment
     @lines.first.split('|')
   end
 end
+
+class TestSplitter < SplitText
+  SPLIT_INDICATOR = '<SPLIT>'
+  MATCH_INDICATOR = '<MATCH>'
+  
+  def initialize
+  end
+  
+  def prepare_to_split(text, pattern)
+    super(text, pattern)
+  end
+  
+  def split_across_pattern(text)
+    super(text)
+    return @value
+  end
+
+  def split_across_matches(value)
+    @value = value
+    super()
+    return @value
+  end
+end  

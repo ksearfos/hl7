@@ -51,7 +51,7 @@
 
 module HL7
   class Segment    
-    attr_reader :children
+    attr_reader :type
     
     # NAME: new
     # DESC: creates a new HL7::Segment object from its original text
@@ -61,13 +61,12 @@ module HL7
     #  [HL7::Segment] newly-created Segment
     # EXAMPLE:
     #  HL7::Segment.new( "PID|a|b|c" ) => new Segment with text "a|b|c" and fields ["a","b","c"]
-    def initialize(separators, type, *segment_text_by_line)
+    def initialize(segment_text_array, separators)
       raise_error_if(segment_text_by_line.empty?)
-      @lines = segment_text_by_line   
+      @lines = segment_text_array.transpose[-1]  
       @separators = separators
-      @children = []
-      @child_class = HL7.typed_segment(type)
-      add_typed_segments
+      separate_lines_into_fields
+      add_type_values(@lines[0][0])
     end
 
     # NAME: to_s
@@ -189,6 +188,9 @@ module HL7
     
     private
 
+    def separate_lines_into_fields
+      @fields = @lines.map { |line| line.split(@separators[:field]) }
+    end
     # called by initialize
     # breaks the text into its fields
     # updates @fields

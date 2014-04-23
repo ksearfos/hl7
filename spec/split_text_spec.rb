@@ -39,5 +39,4 @@ EOS
       expect(splitter.rejoin(delimiter)).to eq(rejoined_text)
     end
   end
-
 end

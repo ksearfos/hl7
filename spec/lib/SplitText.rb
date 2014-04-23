@@ -30,6 +30,7 @@
 class SplitText
   attr_reader :value
   SPLIT_INDICATOR = '<SPLIT>'
+  MATCH_INDICATOR = '<MATCH>'
     
   def initialize(core_text, regex)
     raise "SplitText requires a String" unless core_text.is_a? String
@@ -44,8 +45,33 @@ class SplitText
   private
     
   def split(text, pattern)     
-    text.gsub!(pattern, SPLIT_INDICATOR+'\1'+SPLIT_INDICATOR)
+    prepped_text = prepare_to_split(text, pattern)
+    split_across_pattern(text)
+    split_across_matches
+  end
+  
+  # replaces the pattern with "<SPLIT>" + matched_part_if_there_is_one + "<MATCH>"
+  def prepare_to_split(text, pattern)
+    text.gsub!(pattern, SPLIT_INDICATOR+'\1'+MATCH_INDICATOR)
+  end
+
+  # splits into an array of strings which start with matched_part_if_there_is_one + "<MATCH>"
+  def split_across_pattern(text)
     @value = text.split(SPLIT_INDICATOR)
-    @value.reject!(&:empty?)
+    @value.reject!(&:empty?)   # empty string?
+    make_sure_all_elements_have_match_indicator
+  end
+  
+  # splits each element in the array into another array, containing two strings each
+  # the first element will always be matched_part_if_there_is_one (or "" otherwise)
+  def split_across_matches
+    @value.map! { |match_and_text| match_and_text.split(MATCH_INDICATOR) }
+    @value.reject!(&:empty?)   # empty array?
+  end
+
+  def make_sure_all_elements_have_match_indicator
+    first_value = @value[0]
+    return if first_value.include?(MATCH_INDICATOR)
+    @value[0] = "#{MATCH_INDICATOR}#{first_value}"
   end
 end  
