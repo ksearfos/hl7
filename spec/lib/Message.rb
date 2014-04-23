@@ -1,53 +1,39 @@
 $:.unshift File.dirname(__FILE__)
 require 'SplitText'
 
-#------------------------------------------
-#
-# MODULE: HL7
-#
-# CLASS: HL7::Message
-#
-# DESC: Defines a single HL7 message
-#       A message is all lines of text between a header (MSH segment) and some final segment of varying types.
-#         A message comprises multiple lines of text, broken into segments and then fields.
-#       The message class keeps track of the full text of the message, as well as breaking it into the various segments
-#         as Segment objects. All Segments of the same type can be accessed by the type, as message[:TYPE]. 
-#       A single message will always contain a single MSH (header) segment, and will generally contain a single PID
-#         (patient info) segment and a single PV1 (visit info) segment. In addition there will be other segment types, often
-#         at least one of which will occur multiple times.
-#
-# EXAMPLE: Message => "MSH|...\nPID|...\nPV1|...\nOBX|1|...\nOBX|2|..." / {:MSH=>Seg1,:PID=>Seg2,:PV1=>Seg3,:OBX=>Seg4}
-#
-# CLASS VARIABLES: none; uses HL7.separators[:segment]
-#
-# READ-ONLY INSTANCE VARIABLES:
-#    @lines [Array]: stores segment types in the order in which the lines appear in the message, e.g. [:MSH,:PID,:PV1,:OBX,:OBX]
-#    @segments [Hash]: stores each segment as a Segment object linked to by type, e.g. { :MSH=>Seg1, :PID=>Seg2, ... }
-#               ====>  will actually be objects of one of the Segment child classes
-#    @id [String]: stores the message ID, also known as the message control ID or MSH.9
-#    @type [Symbol]: either :lab, :rad, or :adt, depending on the value of MSH.2
-#
-# CLASS METHODS: none
-#
-# INSTANCE METHODS:
-#    new(message_text): creates new Message object based off of given text
-#    to_s: returns String form of Message, which is the text the message was derived from
-#    each_segment(&block): loops through each segment object, executing given code
-#    method_missing: calls certain Hash methods on @segments
-#                    otherwise throws exception
-#    header: returns the message header, e.g. the MSH segment object
-#    details: returns important details for quick summary
-#    view_segments: displays readable version of the segments, headed by the type of the segment
-#    fetch_field(field): returns the value of the segment and field specified -- fetch_field("abc1") ==> self[:ABC][1]
-#                 ====>  always returns array for elegant handling of multi-line segments
-#    segment_before(seg): returns name/type of the segment occurring directly before the one specified
-#    segment_after(seg): returns the name/type of the segment occurring directly after the one specified
-#
-# CREATED BY: Kelli Searfos
-#
-# LAST UPDATED: 3/13/14 12:00
-#
-#------------------------------------------
+=begin -------------------------------------------------------------------
+  MODULE: HL7
+  CLASS: Message
+  DESC: Defines a single HL7 message
+        A message is all lines of text between a header (MSH segment) and the start of the next header.
+          A message comprises multiple lines of text, which can be broken into segments and then fields.
+        The message class keeps track of the full text of the message, as well as breaking it into the
+          various segments. All Segments of the same type can be accessed by the type, as message[:TYPE]. 
+        A message will always contain a single MSH (header) segment, and will generally contain a single
+          PID (patient info) segment and a single PV1 (visit info) segment. In addition there will be other
+          segment types, some of which may comprise multiple lines in the same message.
+
+  CLASS VARIABLES: none; uses HL7::SEGMENT_DELIMITER
+  CLASS METHODS: none; uses HL7.get_separators
+  
+  INSTANCE VARIABLES:
+    @segments [Hash]: stores each segment as a Segment object linked to by type [READ-ONLY]
+    @type [Symbol]: either :lab, :rad, or :enc, depending on the value of MSH.2 [READ-ONLY]
+  INSTANCE METHODS:
+    new(message_text): creates new Message object based off of given text
+    to_s: returns String form of Message, which is the text the message was derived from
+    each(&block): loops through each segment object, executing given code
+    size: returns the number of different segments contained in the message
+    [](type): returns the Segment object of the given type
+    header: returns the message header, e.g. the MSH segment object
+    id: returns the message control ID
+    view_segments: displays readable version of the segments
+    all_fields(descriptor): returns all values of the segment and field specified, as an Array
+    verify_segment_order(segment1, segment2): returns true if segment1 appears after segment2; false otherwise
+
+  CREATED BY: Kelli Searfos
+  LAST UPDATED: 4/23 13:23
+=end -------------------------------------------------------------------
 
 module HL7
    
