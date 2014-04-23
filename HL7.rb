@@ -27,7 +27,7 @@ module HL7
     separators
   end
       
-  HEADER_REGEX = /^\d*MSH\|/        # regex defining header row
+  HEADER_REGEX = /^(\d*MSH)\|/        # regex defining header row
   SSN = /^\d{9}$/             # regex defining social security number, which is just 9 digits, no dashes
   ID_FORMAT = /^[A-Z]?d+$/    # regex defining a medical ID
   SEGMENT_REGEX = /^[A-Z]{2}[A-Z1]{1}/    # regex defining a properly-formatted segment

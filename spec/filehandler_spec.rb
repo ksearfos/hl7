@@ -4,7 +4,7 @@ require 'spec_helper'
 describe HL7::FileHandler do
   before(:all) do
     @data_directory = "#{File.dirname(__FILE__)}/test_data"
-    @file = "#{@data_directory}/text_input.txt"
+    @file = "#{@data_directory}/standard_hl7_input.txt"
   end
   
   before(:each) do
@@ -42,7 +42,18 @@ describe HL7::FileHandler do
       expect { HL7::FileHandler.new(file) }.not_to raise_exception
     end
   end
-   
+  
+  describe "#size" do
+    it "returns the number of messages in the file" do
+      expect(@handler.size).to eq(8)
+    end
+    
+    it "correctly identifies the start and end of messages, regardless of file format" do
+      file = "#{@data_directory}/wonky_hl7_input.dat"
+      expect(HL7::FileHandler.new(file).size).to eq(5)
+    end
+  end 
+  
   describe "#do_for_all_messages" do
     it "creates Message objects from the text in @file" do
       expect(HL7::Message).to receive(:new).exactly(@handler.size).times

@@ -87,7 +87,7 @@ module HL7
     def read_file_text
       @file_text = ""      
       HL7.read_file_by_character(@file) do |character|
-        @file_text << character == "\r" ? EOL : character
+        @file_text += character == "\r" ? EOL : character
       end
     end  
 
@@ -112,8 +112,11 @@ module HL7
     
     # called by initialize
     def convert_file_text_to_message_text
-      splitter = TextSplitter.new(@file_text, EOL)
-      @messages_as_text = splitter.rejoin(HL7::SEGMENT_DELIMITER)
+      split_ready_text = @file_text.gsub(HL7::HEADER_REGEX, '>>>\1')
+      puts split_ready_text
+      @messages_as_text = split_ready_text.split('>>>')
+      
+      # @messages_as_text = splitter.rejoin(HL7::SEGMENT_DELIMITER)
     end    
   
     # called by do_for_all_messages
