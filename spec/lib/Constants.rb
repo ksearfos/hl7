@@ -1,7 +1,5 @@
 module HL7
       
-  HEADER_REGEX = /^\d*(MSH)\|/              # regex defining header row, matching 'MSH'
-  SEGMENT_REGEX = /^([A-Z]{2}[A-Z1]{1})\|/  # regex defining a segment row, matching first three characters
   SEGMENT_DELIMITER = "\n"
   ID_FORMAT_REGEX = /^[A-Z]?d+$/            # regex defining an ID in the system
   

@@ -51,173 +51,70 @@
 
 module HL7
   class Segment    
-    attr_reader :type
-    
-    # NAME: new
-    # DESC: creates a new HL7::Segment object from its original text
-    # ARGS: 3
-    #  segment_text [String] - the text of the segment, with or without its Type field
-    # RETURNS:
-    #  [HL7::Segment] newly-created Segment
-    # EXAMPLE:
-    #  HL7::Segment.new( "PID|a|b|c" ) => new Segment with text "a|b|c" and fields ["a","b","c"]
-    def initialize(segment_text_array, separators)
-      raise_error_if(segment_text_by_line.empty?)
-      @lines = segment_text_array.transpose[-1]  
+    def initialize(split_segment_text, separators)
+      raise_error_if(!split_segment_text.is_a?(SplitText))
+      raise_error_if(split_segment_text.value.empty?)
+      
+      @text = split_segment_text.value   # [[type, line1], [type, line2], ...]
       @separators = separators
-      separate_lines_into_fields
-      add_type_values(@lines[0][0])
+      get_lines_from_text                # sets @lines: [line1, line2, ...]
+      separate_lines_into_fields         # sets @fields: [[field1, field2, ...], [field1, field2, ...], ...]
+      add_type_values(@text[0][0])
     end
-
-    # NAME: to_s
-    # DESC: returns the segment as a String object
-    # ARGS: none 
-    # RETURNS:
-    #  [String] the segment in textual form, with the type field added back in
-    # EXAMPLE:
-    #  segment.to_s => "TYPE|a|b|c"    
+   
     def to_s
-      @lines * HL7::SEG_DELIM
+      @lines * HL7::SEGMENT_DELIMITER
     end
     
-    # NAME: each
-    # DESC: performs actions for each object, self + all children
-    # ARGS: 1
-    #  [code block] - the code to execute on each line
-    # RETURNS: nothing, unless specified in the code block
-    # EXAMPLE:
-    #  1-line segment: segment.each{ |s| print s + ' & ' } => a & b & c
-    #  2-line segment: segment.each{ |s| print s + ' & ' } => [a,b,c] & [a2,b2,c2] 
+    # DESC: performs actions for each field
     def each(&block)
-      @children.each{ |child| yield(child) }
+      @fields.flatten.each{ |field| yield(field) }
     end
     
-    # NAME: each_line
-    # DESC: performs actions with the fields in each line of the segment
-    #       despite the name, manipulates @fields_by_line and not @lines
-    # ARGS: 1
-    #  [code block] - the code to execute on each line
-    # RETURNS: nothing, unless specified in the code block
-    # EXAMPLE:
-    #  segment.each_line{ |l| print l.join("|") + ' & ' } => a|b|c & a2|b2|c2 & a3|b3|c3 
+    # DESC: performs actions for each line (as an array of fields) 
     def each_line
-      @fields_by_line.each{ |row| yield( row ) }
+      @fields.each{ |row| yield( row ) }
     end
-
-    # NAME: each_field
-    # DESC: performs actions for each field of the first line of the segment
-    # ARGS: 1
-    #  [code block] - the code to execute on each line
-    # RETURNS: nothing, unless specified in the code block
-    # EXAMPLE:
-    #  segment.each_field{ |f| print f.to_s + ' & ' } => a & b & c     
-    def each_field
-      @fields.each{ |f_obj| yield(f_obj) }
-    end
-
-    # NAME: []
-    # DESC: returns field at given index (in this line only!)
-    # ARGS: 1
-    #  index [Integer/Symbol/String] - the index or name of the field we want -- count starts at 1
-    # RETURNS:
-    #  [String] the value of the field
-    # EXAMPLE:
-    #  segment[2] => "b"
-    #  segment[:beta] => "b"  
-    # ALIASES: field()  
-    def [](which)
-      field(which).to_s
+ 
+    # returns value of field, as string
+    def [](index)
+      field(index).to_s
     end
     
-    # NAME: field
-    # DESC: returns field at given index (in this line only!)
-    # ARGS: 1
-    #  index [Integer/Symbol/String] - the index or name of the field we want -- count starts at 1
-    # RETURNS:
-    #  [Field] the actual field object
-    # EXAMPLE:
-    #  segment.field(2) => "b"
-    #  segment.field(:beta) => "b" 
+    # returns value of field, as Field
     def field( which )
-      i = field_index(which)
-      i == @@no_index_val ? nil : @fields[i]
+      index = field_index(which)
+      @fields[0][index]
     end
     
-    # NAME: all_fields
     # DESC: returns array of fields at given index (in this line and all children!)
-    # ARGS: 1
-    #  index [Integer/Symbol/String] - the index or name of the field we want -- count starts at 1
-    # RETURNS:
-    #  [Array] the value of the field for each line
-    #      ==>  if there is only one line of this segment's type, returns field() IN AN ARRAY
-    # EXAMPLE:
-    #  segment.all_fields(2) => [ "b", "b2", "b3" ]
-    #  segment.all_fields(:beta) => [ "b", "b2", "b3" ] 
-    def all_fields( which )
-      i = field_index(which)
-
-      all = []
-      @fields_by_line.each{ |row| all << row[i] } if i != @@no_index_val
-      all
-    end
-    
-    # NAME: method_missing
-    # DESC: handles methods not defined for the class
-    # MATCHES METHODS: Array#size, Array#each, Array#[], Array#first, Array#last
-    #                  calls matched method on @children; otherwise, throws exception
-    # EXAMPLE:
-    #  message.size => 5
-    #  message.balloon => throws NoMethodError    
-    def method_missing( sym, *args, &block )
-      methods_it_responds_to = [:first, :last, :size, :each, :[]]
-      if methods_it_responds_to.include?(sym) then @children.send(sym, *args)
-      else super
-      end
+    def all_fields(index)
+      index = field_index(which)
+      @fields.map{ |row| row[index] }
     end
 
-    # NAME: view
-    # DESC: displays the fields, for each line, clearly enumerated
-    # ARGS: none
-    # RETURNS: nothing; writes to stdout
-    # EXAMPLE:
-    #  1-line segment: segment.view => 1:a, 2:b, 3:c
-    #  2-line segment: segment.view => 1:a, 2:b, 3:c
-    #                                  1:a2, 2:b2, 3:c2
-    def view
+    def show
+      @text.each { |type, line_text| puts "#{type}: #{line_text}" }
     end
     
     private
 
-    def separate_lines_into_fields
-      @fields = @lines.map { |line| line.split(@separators[:field]) }
-    end
     # called by initialize
-    # breaks the text into its fields
-    # updates @fields
-    def break_into_fields
-      @lines.each do |line|
-        fields = line.split(@separators[:field])
-        @fields = fields.map { |field_text| Field.new(field_text, @separators[:comp]) }
-      end
-    end
-
-    # called by initialize
-    # breaks each line of text into another Segment, but with the correct type
-    # updates @children
-    def add_typed_segments
-      @lines.each do |line|
-        text = remove_name_field(line)
-        @children << @child_class.new(@separators.clone, text)
-      end
+    def get_lines_from_text
+      @lines = @text.transpose.last
     end
     
-    # called by add_typed_segments
-    def remove_name_field(line)
-      return line unless line[HL7::SEGMENT]
-      _, nameless_line = line.split(HL7::SEGMENT)
-      nameless_line
+    # called by initialize
+    def separate_lines_into_fields
+      @fields = @lines.map { |line| line.split(@separators[:field]) }
+      @fields.map! { |field_text_array| make_fields_array(field_text_array) }
     end
 
+    # called by separate_lines_into_fields
+    def make_fields_array(text_array)
+       text_array.map { |field_text| HL7::Field.new(field_text, @separators.clone) }  
+    end
+    
     def raise_error_if(condition)
       raise HL7::InputError, "HL7::Segment requires valid text" if condition
     end

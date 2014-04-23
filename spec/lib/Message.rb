@@ -38,6 +38,7 @@ require 'SplitText'
 module HL7
    
   class Message  
+    SEGMENT_REGEX = /^([A-Z]{2}[A-Z1]{1})\|/  # regex defining a segment row, matching first three characters
     attr_reader :segments, :type
 
     # PURPOSE:  creates a new HL7::Message from its original text
@@ -143,18 +144,17 @@ module HL7
     end
     
     def split_by_segment
-      split_text = SplitText.new(@message_text.clone, HL7::SEGMENT_REGEX)
-      split_text.value.each_slice(2) { |pair| @segment_units << pair }
+      @segment_units = SplitText.new(@message_text.clone, SEGMENT_REGEX)
     end
     
     # called by break_into_segments, segment_before
     def segment_types
-      @segment_units.transpose[0].uniq
+      @segment_units.value.transpose[0].uniq
     end
     
     # called by break_into_segments
     def add_new_segment(type)
-      segments = @segment_units.select { |segment_type, text| segment_type == type }
+      segments = @segment_units.value.select { |segment_type, text| segment_type == type }
       @segments[type.to_sym] = Segment.new(segments, @separators.clone)
     end
 

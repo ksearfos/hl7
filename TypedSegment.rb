@@ -44,113 +44,49 @@
 #------------------------------------------
 
 module HL7
-  
-  class Segment     
-
-    # NAME: Segment.subclasses
-    # DESC: finds all subclasses created
-    # ARGS: 0
-    # RETURNS:
-    #  [Array] list of all eigenclasses
-    # EXAMPLE:
-    #  Segment.subclasses => [ :MSH, :PID ]
-    def self.subclasses
-      ObjectSpace.each_object(::Class).select{ |klass| klass < self }
-    end
+  module SegmentTyping
     
-    # NAME: Segment.is_eigenclass?
-    # DESC: determines whether object is instance of Segment or one of its eigenclasses
-    # ARGS: 0
-    # RETURNS:
-    #  [Boolean] true if class is an eigenclass; false otherwise (false if class is Segment)
-    # EXAMPLE:
-    #  Segment.is_eigenclass? ==> false
-    #  PID.is_eigenclass? ==> true
-    def self.is_eigenclass?
-      self.instance_variable_defined?( :@type )
+    def add_type_values(type)
+      @type = type
+      @field_index_maps = HL7.const_get("#{@type.upcase}_FIELDS")
     end
-
-    # NAME: type
-    # DESC: instance-level accessor for the newly added @type variable
-    # ARGS: 0
-    # RETURNS:
-    #  [Symbol] value of @type for self.class, if defined -- otherwise will be nil
-    # EXAMPLE:
-    #  segment_obj.type ==> nil
-    #  pid_obj.type ==> :PID    
+  
     def type
-      self.class.type
+      @type
     end
 
-    # NAME: field_index_maps
-    # DESC: instance-level accessor for the newly added @field_index_maps variable
-    # ARGS: 0
-    # RETURNS:
-    #  [Symbol] value of @field_instance_maps for self.class, if defined -- otherwise will be nil
-    # EXAMPLE:
-    #  segment_obj.field_index_maps ==> nil
-    #  pid_obj.field_index_maps ==> { :id=>3, :name=>5, :dob=>6, :sex=>8, :ssn=>19 }    
     def field_index_maps
-      self.class.field_index_maps
+      @field_index_maps
+    end
+
+    private
+    
+    def field_index(which_field)
+      index = integerize_field_index(which_field)
+            
+      if index.is_a?(Integer)
+        which_field < 0 ? which_field : which_field - 1  # count starts at 1; array index starts at 0
+      else
+        raise NoIndexError "Cannot find field #{index} of type #{index.class}"
+      end
     end
     
-    # eigenclass stuff
-    # used by child classes like Pid and Obx
-    # everything in here is a class-level variable/method for the eigenclass, which is ironically an instance of Segment
-    # to access the variables, use @[variablename]; to access the methods, use class.[methodname]
-    class << self
-      attr_accessor :type, :field_index_maps
-
-      # NAME: add
-      # DESC: add field-index pair to @field_index_maps
-      # ARGS: 2
-      #  [Symbol] - name of the field
-      #  [Integer] - its index, assuming count starts at 1 
-      # RETURNS: nothing; modifies @field_index_maps
-      # EXAMPLE:
-      #  PID.add(:first,1) => { :first=>1, :id=>3, :name=>5, :dob=>6, :sex=>8, :ssn=>19 }     
-      def add( field, index )
-        field_index_maps[field] = index
-      end
-    end    
+    # called by field_index
+    def integerize_field_index(description)
+      return description unless is_field_text?(description)     
+      index = index_for_description(description)
+      index ? index - 1 : description
+    end
     
-  end #class
-
-  # NAME: HL7.new_typed_segment
-  # DESC: creates new childclass of Segment with @type = type and @field_index_maps = HL7::[type]_FIELDS
-  # ARGS: 1
-  #  [Symbol/String] - the segment type/name of the new class 
-  # RETURNS:
-  #  [Class] new Class, a child of Segment
-  # EXAMPLE:
-  #  HL7.new_typed_class(:MSH) ==> class named MSH with @type=:MSH and @field_index_maps=MSH_FIELDS
-  def self.typed_segment(type)
-    # create new class
-    t = type.upcase
-    return HL7.const_get(t) if HL7.const_defined?(t)
+    # called by integerize_field_index
+    def is_field_text?(description)
+      description.is_a?(String) || description.is_a?(Symbol)
+    end
     
-    klass = Object.const_set( t.to_s, Class.new(Segment) )   # => new class called TYPE
-    klass.type = t.to_sym
-  
-    # populate @type, @field_index_maps for the class
-    hash_name = "#{t}_FIELDS"
-    klass.field_index_maps = HL7.const_defined?( hash_name ) ? HL7.const_get( hash_name ) : {}
-        
-    klass
-  end
-
-    def field_index( which )
-      if which.is_a?( Integer )
-        i = which < 0 ? which : which - 1
-        i     # field count starts at 1, but array index starts at 0
-      elsif ( which.is_a?(String) || which.is_a?(Symbol) ) && self.class.is_eigenclass?  # @field_index_maps is defined?
-        s = which.downcase.to_sym
-        i = field_index_maps[s]
-        i ? i - 1 : @@no_index_val
-      else
-        puts "Cannot find field of type #{which.class}"
-        @@no_index_val
-      end
+    # called by integerize_field_index
+    def index_for_description(description)
+      field_symbol = description.downcase.to_sym
+      field_index_maps[field_symbol]
     end
   end        
 end

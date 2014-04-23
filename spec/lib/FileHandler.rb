@@ -31,6 +31,7 @@ require_relative 'SplitText'
 module HL7
   class FileHandler
     EOL = "\n"    # the end-of-line character we are using
+    HEADER_REGEX = /^\d*(MSH)\|/              # regex defining header row, matching 'MSH'
     attr_reader :file
     
     # PURPOSE:  creates a new HL7::FileHandler object from a text file
@@ -112,9 +113,7 @@ module HL7
     
     # called by initialize
     def convert_file_text_to_message_text
-      split_text = SplitText.new(@file_text, HL7::HEADER_REGEX)
-      @messages_as_text = []
-      split_text.value.each_slice(2) { |head, body| @messages_as_text << head + body }
+      @messages_as_text = SplitText.new(@file_text, HEADER_REGEX).value
     end    
   
     # called by do_for_all_messages
