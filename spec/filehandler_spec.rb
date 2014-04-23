@@ -12,7 +12,7 @@ describe HL7::FileHandler do
     @handler = HL7::FileHandler.new(@file)
   end
 
-  it "has a file called #{@file}" do
+  it "has a file called standard_hl7_input.txt" do
     expect(@handler.file).to eq(@file)
   end
   
@@ -46,12 +46,7 @@ describe HL7::FileHandler do
   describe "#size" do
     it "returns the number of messages in the file" do
       expect(@handler.size).to eq(8)
-    end
-    
-    it "correctly identifies the start and end of messages, regardless of file format" do
-      file = "#{@data_directory}/wonky_hl7_input.dat"
-      expect(HL7::FileHandler.new(file).size).to eq(5)
-    end
+    end 
   end 
   
   describe "#do_for_all_messages" do
