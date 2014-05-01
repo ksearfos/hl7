@@ -103,9 +103,44 @@ describe HL7::Field do
   
   describe "#return_as" do
     context "when the field represents a date" do
-      it "returns the value as MM/DD/YYYY" do
+      it "returns the value as 'MM/DD/YYYY'" do
         date_field = HL7::Field.new("20131104")  # Nov. 4, 2013
         expect(date_field.return_as(:date)).to eq("11/4/2013")
+      end
+    end
+    
+    context "when the field represents a time" do
+      it "returns the value as 'HH:MM'" do
+        time_field = HL7::Field.new("2342")  # 11:42 PM
+        expect(time_field.return_as(:time)).to eq("23:42")
+      end  
+      
+      context "when the seconds is included" do
+        it "returns the value as 'HH:MM:SS'" do
+          time_field = HL7::Field.new("110645")  # 11:06 AM (and 45 seconds)
+          expect(time_field.return_as(:time)).to eq("11:06:45")
+        end
+      end 
+    end
+    
+    context "when the field represents a name" do
+      it "returns the value as 'Prefix First MI Last, Suffix Degree'" do
+        name_field = HL7::Field.new("Smith^John^J^III^Mr^Ph.D")
+        expect(name_field.return_as(:name)).to eq("Mr John J Smith III, Ph.D")
+      end
+
+      context "when the first component is the user's ID" do
+        it "removes the ID and formats the remaining text" do
+          name_field = HL7::Field.new("123456^Doe^Jane^Marie^^Dr^")
+          expect(name_field.return_as(:name)).to eq("Dr Jane Marie Doe")
+        end        
+      end      
+    end
+    
+    context "when the field represents a date and a time" do
+      it "returns the value as 'MM/DD/YYYY HH:MM(:SS)'" do
+        datetime = HL7::Field.new("198409261104")
+        expect(datetime.return_as(:datetime)).to eq("9/26/1984 11:04")
       end
     end
   end
