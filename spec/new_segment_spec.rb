@@ -1,5 +1,3 @@
-# last run: 4/9
-$:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
 
 describe HL7::Segment do

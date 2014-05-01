@@ -2,6 +2,7 @@ module HL7
       
   SEGMENT_DELIMITER = "\n"
   ID_FORMAT_REGEX = /^[A-Z]?d+$/            # regex defining an ID in the system
+  SEGMENT_REGEX = /^\d*[A-Z]{2}[A-Z1]{1}\|/
   
   # a list of all possible message types can be found at http://www.interfaceware.com/hl7-standard/hl7-messages.html
   ORDER_MESSAGE_TYPE = "ORU^O01"
