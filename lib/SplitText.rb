@@ -66,7 +66,7 @@ class SplitText
   # the first element will always be matched_part_if_there_is_one (or "" otherwise)
   def split_across_matches
     @value.map! { |match_and_text| match_and_text.split(MATCH_INDICATOR) }
-    @value.reject!(&:empty?)   # empty array?
+    @value.flatten.reject!(&:empty?)   # empty array?
   end
 
   def make_sure_all_elements_have_match_indicator
