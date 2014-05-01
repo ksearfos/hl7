@@ -28,50 +28,64 @@
 =end -------------------------------------------------------------------
 
 class SplitText
-  attr_reader :value
   SPLIT_INDICATOR = '<SPLIT>'
   MATCH_INDICATOR = '<MATCH>'
     
   def initialize(core_text, regex)
     raise "SplitText requires a String" unless core_text.is_a? String
     raise "SplitText requires a Regexp" unless regex.is_a? Regexp 
-    split(core_text, regex)    # sets @value
-  end
-    
-  def rejoin(delimiter)
-    @value * delimiter  
-  end
-    
-  private
-    
-  def split(text, pattern)     
-    prepped_text = prepare_to_split(text, pattern)
-    split_across_pattern(text)
-    split_across_matches
+    @value = core_text
+    @pattern = regex
+    mark_with_split_points
   end
   
-  # replaces the pattern with "<SPLIT>" + matched_part_if_there_is_one + "<MATCH>"
-  def prepare_to_split(text, pattern)
-    text.gsub!(pattern, SPLIT_INDICATOR+'\1'+MATCH_INDICATOR)
+  def split
+    split_across_pattern
+    split_across_matches  
+    @split_text.flatten
+  end
+  
+  # rejoins text, but doesn't actually change @value  
+  def rejoin(split_point_delimiter, match_point_delimiter = "")
+    rejoined = @value.gsub(SPLIT_INDICATOR, split_point_delimiter) 
+    rejoined.gsub!(MATCH_INDICATOR, match_point_delimiter)
+    rejoined.reverse.chomp(split_point_delimiter).reverse
+  end
+  
+  # "peek" at @value, getting an idea of what the remaining text is
+  # returns a 1-dimensional array
+  # e.g. ["1", "carrot"] or ["apple"]
+  def peek
+    split_value = split
+    split_value.reject(&:empty?)
+  end  
+  
+  private
+
+  # replaces the pattern with "<SPLIT>" + matched_part_if_there_is_one + "<MATCH>" 
+  # e.g. "<SPLIT>1<MATCH>carrot" or "<SPLIT><MATCH>apple"   
+  def mark_with_split_points   
+    @value.gsub!(@pattern, SPLIT_INDICATOR+'\1'+MATCH_INDICATOR)
   end
 
   # splits into an array of strings which start with matched_part_if_there_is_one + "<MATCH>"
-  def split_across_pattern(text)
-    @value = text.split(SPLIT_INDICATOR)
-    @value.reject!(&:empty?)   # empty string?
+  # e.g. "1<MATCH>carrot" or "<MATCH>apple"
+  def split_across_pattern
+    @split_text = @value.split(SPLIT_INDICATOR)
+    @split_text.reject!(&:empty?)   # empty string?
     make_sure_all_elements_have_match_indicator
   end
   
   # splits each element in the array into another array, containing two strings each
   # the first element will always be matched_part_if_there_is_one (or "" otherwise)
+  # e.g. ["1", "carrot"] or ["", "apple"]
   def split_across_matches
-    @value.map! { |match_and_text| match_and_text.split(MATCH_INDICATOR) }
-    @value.flatten.reject!(&:empty?)   # empty array?
+    @split_text.map! { |match_and_text| match_and_text.split(MATCH_INDICATOR) }
   end
 
   def make_sure_all_elements_have_match_indicator
-    first_value = @value[0]
+    first_value = @split_text[0]
     return if first_value.include?(MATCH_INDICATOR)
-    @value[0] = "#{MATCH_INDICATOR}#{first_value}"
+    @split_text[0] = "#{MATCH_INDICATOR}#{first_value}"
   end
 end  
