@@ -144,4 +144,26 @@ describe HL7::Field do
       end
     end
   end
+  
+  describe "#empty" do
+    context "when the value is an empty string" do
+      it "is true" do
+        empty_field = HL7::Field.new("")
+        expect(empty_field).to be_empty
+      end
+    end
+    
+    context "when the value is not empty" do
+      it "is false" do
+        expect(field).not_to be_empty
+      end
+    end
+  end
+  
+  describe "#size" do
+    it "returns the number of components" do
+      field = HL7::Field.new("I^have^4^components")
+      expect(field.size).to eq(4)
+    end
+  end  
 end

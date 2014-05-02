@@ -20,6 +20,14 @@ module HL7
     def return_as(type)
       HL7.send("make_#{type}", @value)
     end
+    
+    def empty?
+      @value.empty?
+    end
+    
+    def size
+      @components.size
+    end
   
     private
     
